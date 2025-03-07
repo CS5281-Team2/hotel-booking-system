@@ -1,0 +1,97 @@
+# ---------------------------
+# Project Specific Ignores
+# ---------------------------
+
+# Local data files (uncomment if not tracking test data)
+# backend/data/*.dat
+# backend/data/*.tmp
+
+# Keep empty data directory
+!backend/data/.keep
+
+# ---------------------------
+# Environment/IDE
+# ---------------------------
+
+# Local development environment files
+.env
+.env.local
+.env*.backup
+
+# IDE specific configurations
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# ---------------------------
+# Dependency Directories
+# ---------------------------
+
+# PHP dependencies (Composer)
+/vendor/
+composer.lock
+
+# JavaScript dependencies
+/node_modules/
+/package-lock.json
+
+# CSS preprocessing outputs
+*.css.map
+*.sass.map
+
+# ---------------------------
+# Build Artifacts
+# ---------------------------
+
+# Frontend build outputs
+/dist/
+/build/
+*.min.js
+*.min.css
+
+# Compiled templates
+/templates_c/
+
+# ---------------------------
+# Logs & Debug Files 
+# ---------------------------
+
+# Server logs
+*.log
+logs/
+error_log
+
+# Debug files
+*.debug
+*.stackdump
+
+# ---------------------------
+# Temporary Files
+# ---------------------------
+
+# Cache files
+*.tmp
+*.temp
+.cache/
+
+# Session files
+*.sess
+*.session
+
+# Uploaded media (if applicable)
+/uploads/
+!/uploads/.keep
+
+# ---------------------------
+# Editor/OS Backup Files
+# ---------------------------
+*.bak
+*~
+*.swp
+*.swo
+*.orig
