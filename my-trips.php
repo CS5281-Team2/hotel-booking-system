@@ -1,0 +1,190 @@
+<?php
+$pageTitle = 'My Trips';
+include 'includes/header.php';
+require_once 'includes/db.php';
+require_once 'includes/auth.php';
+
+// 验证用户登录状态
+if (!isLoggedIn()) {
+    header('Location: login.php');
+    exit;
+}
+
+// 获取用户预订
+$userId = $_SESSION['user_id'];
+$bookings = getUserBookings($userId);
+
+// 将预订分类为即将到来的和历史预订
+$upcomingBookings = [];
+$pastBookings = [];
+$cancelledBookings = [];
+
+$today = new DateTime();
+$today->setTime(0, 0, 0);
+
+foreach ($bookings as $booking) {
+    $checkInDate = new DateTime($booking['check_in']);
+    $checkOutDate = new DateTime($booking['check_out']);
+    
+    // 添加房间信息
+    $booking['room'] = getRoomById($booking['room_id']);
+    
+    // 计算住宿天数
+    $interval = $checkInDate->diff($checkOutDate);
+    $booking['nights'] = $interval->days;
+    
+    if ($booking['status'] === 'cancelled') {
+        $cancelledBookings[] = $booking;
+    } elseif ($checkOutDate < $today) {
+        $pastBookings[] = $booking;
+    } else {
+        $upcomingBookings[] = $booking;
+    }
+}
+
+// 处理取消预订
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['cancel_booking'])) {
+    $bookingId = $_POST['booking_id'];
+    $booking = getBookingById($bookingId);
+    
+    // 确保预订存在且属于当前用户
+    if ($booking && $booking['user_id'] == $userId) {
+        updateBookingStatus($bookingId, 'cancelled');
+        header('Location: my-trips.php');
+        exit;
+    }
+}
+?>
+
+<section style="padding: 50px 0;">
+    <div class="container">
+        <h1 style="margin-bottom: 20px;">My Trips</h1>
+        
+        <div style="margin-bottom: 40px;">
+            <h2>Upcoming Stays</h2>
+            
+            <?php if (empty($upcomingBookings)): ?>
+                <div style="text-align: center; padding: 30px; background-color: #f9f9f9; border-radius: 8px; margin-top: 20px;">
+                    <p>You don't have any upcoming stays.</p>
+                    <a href="index.php" class="btn btn-primary" style="margin-top: 15px;">Book a Room</a>
+                </div>
+            <?php else: ?>
+                <?php foreach ($upcomingBookings as $booking): ?>
+                    <div class="card" style="margin-top: 20px;">
+                        <div class="card-body" style="display: flex; flex-wrap: wrap;">
+                            <div style="flex: 0 0 150px; margin-right: 20px;">
+                                <img src="https://via.placeholder.com/150x100?text=<?php echo str_replace(' ', '+', $booking['room']['type']); ?>" alt="<?php echo $booking['room']['type']; ?>" style="width: 150px; height: 100px; object-fit: cover; border-radius: 4px;">
+                            </div>
+                            
+                            <div style="flex: 1; min-width: 300px;">
+                                <h3><?php echo $booking['room']['type']; ?></h3>
+                                
+                                <div style="display: flex; margin-top: 10px;">
+                                    <div style="margin-right: 30px;">
+                                        <p><strong>Check-in:</strong> <?php echo date('M j, Y', strtotime($booking['check_in'])); ?></p>
+                                        <p><strong>Check-out:</strong> <?php echo date('M j, Y', strtotime($booking['check_out'])); ?></p>
+                                    </div>
+                                    
+                                    <div>
+                                        <p><strong>Guests:</strong> <?php echo $booking['guests']; ?></p>
+                                        <p><strong>Nights:</strong> <?php echo $booking['nights']; ?></p>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div style="flex: 0 0 200px; text-align: right;">
+                                <p><strong>Total:</strong> $<?php echo number_format($booking['total_price'], 2); ?></p>
+                                <p><strong>Status:</strong> <span style="color: #28a745;">Confirmed</span></p>
+                                
+                                <form action="my-trips.php" method="POST" style="margin-top: 10px;" onsubmit="return confirm('Are you sure you want to cancel this booking?');">
+                                    <input type="hidden" name="booking_id" value="<?php echo $booking['id']; ?>">
+                                    <button type="submit" name="cancel_booking" class="btn btn-primary" style="background-color: #dc3545;">Cancel Booking</button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                <?php endforeach; ?>
+            <?php endif; ?>
+        </div>
+        
+        <div style="margin-bottom: 40px;">
+            <h2>Past Stays</h2>
+            
+            <?php if (empty($pastBookings)): ?>
+                <div style="text-align: center; padding: 30px; background-color: #f9f9f9; border-radius: 8px; margin-top: 20px;">
+                    <p>You don't have any past stays.</p>
+                </div>
+            <?php else: ?>
+                <?php foreach ($pastBookings as $booking): ?>
+                    <div class="card" style="margin-top: 20px;">
+                        <div class="card-body" style="display: flex; flex-wrap: wrap;">
+                            <div style="flex: 0 0 150px; margin-right: 20px;">
+                                <img src="https://via.placeholder.com/150x100?text=<?php echo str_replace(' ', '+', $booking['room']['type']); ?>" alt="<?php echo $booking['room']['type']; ?>" style="width: 150px; height: 100px; object-fit: cover; border-radius: 4px;">
+                            </div>
+                            
+                            <div style="flex: 1; min-width: 300px;">
+                                <h3><?php echo $booking['room']['type']; ?></h3>
+                                
+                                <div style="display: flex; margin-top: 10px;">
+                                    <div style="margin-right: 30px;">
+                                        <p><strong>Check-in:</strong> <?php echo date('M j, Y', strtotime($booking['check_in'])); ?></p>
+                                        <p><strong>Check-out:</strong> <?php echo date('M j, Y', strtotime($booking['check_out'])); ?></p>
+                                    </div>
+                                    
+                                    <div>
+                                        <p><strong>Guests:</strong> <?php echo $booking['guests']; ?></p>
+                                        <p><strong>Nights:</strong> <?php echo $booking['nights']; ?></p>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div style="flex: 0 0 200px; text-align: right;">
+                                <p><strong>Total:</strong> $<?php echo number_format($booking['total_price'], 2); ?></p>
+                                <p><strong>Status:</strong> <span style="color: #777;">Completed</span></p>
+                            </div>
+                        </div>
+                    </div>
+                <?php endforeach; ?>
+            <?php endif; ?>
+        </div>
+        
+        <?php if (!empty($cancelledBookings)): ?>
+            <div>
+                <h2>Cancelled Bookings</h2>
+                
+                <?php foreach ($cancelledBookings as $booking): ?>
+                    <div class="card" style="margin-top: 20px;">
+                        <div class="card-body" style="display: flex; flex-wrap: wrap;">
+                            <div style="flex: 0 0 150px; margin-right: 20px;">
+                                <img src="https://via.placeholder.com/150x100?text=<?php echo str_replace(' ', '+', $booking['room']['type']); ?>" alt="<?php echo $booking['room']['type']; ?>" style="width: 150px; height: 100px; object-fit: cover; border-radius: 4px;">
+                            </div>
+                            
+                            <div style="flex: 1; min-width: 300px;">
+                                <h3><?php echo $booking['room']['type']; ?></h3>
+                                
+                                <div style="display: flex; margin-top: 10px;">
+                                    <div style="margin-right: 30px;">
+                                        <p><strong>Check-in:</strong> <?php echo date('M j, Y', strtotime($booking['check_in'])); ?></p>
+                                        <p><strong>Check-out:</strong> <?php echo date('M j, Y', strtotime($booking['check_out'])); ?></p>
+                                    </div>
+                                    
+                                    <div>
+                                        <p><strong>Guests:</strong> <?php echo $booking['guests']; ?></p>
+                                        <p><strong>Nights:</strong> <?php echo $booking['nights']; ?></p>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div style="flex: 0 0 200px; text-align: right;">
+                                <p><strong>Total:</strong> $<?php echo number_format($booking['total_price'], 2); ?></p>
+                                <p><strong>Status:</strong> <span style="color: #dc3545;">Cancelled</span></p>
+                            </div>
+                        </div>
+                    </div>
+                <?php endforeach; ?>
+            </div>
+        <?php endif; ?>
+    </div>
+</section>
+
+<?php include 'includes/footer.php'; ?>
