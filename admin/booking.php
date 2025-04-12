@@ -28,10 +28,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['cancel_booking'])) {
     $booking = getBookingById($bookingId);
     
     if ($booking) {
-        if (updateBookingStatus($bookingId, 'cancelled')) {
-            $successMessage = 'Booking cancelled successfully';
+        // 检查是否是入住当天
+        $checkInDate = new DateTime($booking['check_in']);
+        $today = new DateTime();
+        $today->setTime(0, 0, 0);
+        
+        // 如果今天已经是入住日期，不允许取消
+        if ($checkInDate->format('Y-m-d') == $today->format('Y-m-d')) {
+            $errorMessage = 'Cannot cancel bookings on check-in day';
         } else {
-            $errorMessage = 'Failed to cancel booking';
+            if (updateBookingStatus($bookingId, 'cancelled')) {
+                $successMessage = 'Booking has been cancelled successfully';
+            } else {
+                $errorMessage = 'Failed to cancel booking. Please try again later';
+            }
         }
     } else {
         $errorMessage = 'Booking not found';
@@ -100,7 +110,7 @@ foreach ($allBookings as &$booking) {
                                 </td>
                                 <td style="padding: 12px 15px; text-align: center;">
                                     <?php if ($booking['status'] == 'confirmed'): ?>
-                                        <form action="bookings.php" method="POST" onsubmit="return confirm('Are you sure you want to cancel this booking?');">
+                                        <form action="booking.php" method="POST" onsubmit="return confirm('Are you sure you want to cancel this booking?');">
                                             <input type="hidden" name="booking_id" value="<?php echo $booking['id']; ?>">
                                             <button type="submit" name="cancel_booking" style="background-color: #dc3545; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer;">Cancel</button>
                                         </form>

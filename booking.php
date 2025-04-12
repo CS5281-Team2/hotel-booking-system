@@ -22,6 +22,8 @@ $room = getRoomById($roomId);
 // 验证数据
 $validData = true;
 $errorMessage = '';
+$maxBookingDays = 30; // 最大预订天数
+$minBookingDays = 1;  // 最小预订天数
 
 if (!$room) {
     $validData = false;
@@ -44,6 +46,18 @@ if (!$room) {
         $errorMessage = 'Check-out date must be after check-in date';
     }
     
+    // 验证预订天数
+    $interval = $checkInDate->diff($checkOutDate);
+    $nights = $interval->days;
+    
+    if ($nights < $minBookingDays) {
+        $validData = false;
+        $errorMessage = "Minimum stay is {$minBookingDays} night(s)";
+    } elseif ($nights > $maxBookingDays) {
+        $validData = false;
+        $errorMessage = "Maximum stay is {$maxBookingDays} nights";
+    }
+    
     // 验证客人数量
     if ($guests < 1 || $guests > $room['capacity']) {
         $validData = false;
@@ -64,7 +78,8 @@ $nights = 0;
 if ($validData) {
     $interval = $checkInDate->diff($checkOutDate);
     $nights = $interval->days;
-    $totalPrice = $room['price'] * $nights;
+    // 使用bcmul确保精确的浮点数乘法，然后保留两位小数
+    $totalPrice = number_format($room['price'] * $nights, 2, '.', '');
 }
 
 // 处理预订提交

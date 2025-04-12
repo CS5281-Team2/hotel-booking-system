@@ -6,19 +6,47 @@ define('BOOKINGS_FILE', __DIR__ . '/../data/bookings.txt');
 
 // 确保数据目录存在
 if (!file_exists(__DIR__ . '/../data')) {
-    mkdir(__DIR__ . '/../data', 0777, true);
+    if (!mkdir(__DIR__ . '/../data', 0777, true)) {
+        error_log('无法创建数据目录');
+        return false;
+    }
 }
 
 // 确保数据文件存在
-if (!file_exists(USERS_FILE)) file_put_contents(USERS_FILE, '');
-if (!file_exists(ROOMS_FILE)) file_put_contents(ROOMS_FILE, '');
-if (!file_exists(BOOKINGS_FILE)) file_put_contents(BOOKINGS_FILE, '');
+if (!file_exists(USERS_FILE)) {
+    if (file_put_contents(USERS_FILE, '') === false) {
+        error_log('无法创建用户数据文件');
+        return false;
+    }
+}
+if (!file_exists(ROOMS_FILE)) {
+    if (file_put_contents(ROOMS_FILE, '') === false) {
+        error_log('无法创建房间数据文件');
+        return false;
+    }
+}
+if (!file_exists(BOOKINGS_FILE)) {
+    if (file_put_contents(BOOKINGS_FILE, '') === false) {
+        error_log('无法创建预订数据文件');
+        return false;
+    }
+}
 
 /**
  * 获取所有用户数据
  */
 function getUsers() {
+    if (!file_exists(USERS_FILE) || !is_readable(USERS_FILE)) {
+        error_log('用户数据文件不存在或不可读');
+        return [];
+    }
+    
     $content = file_get_contents(USERS_FILE);
+    if ($content === false) {
+        error_log('读取用户数据文件失败');
+        return [];
+    }
+    
     $users = $content ? explode("\n", $content) : [];
     return array_filter($users); // 移除空行
 }
@@ -27,8 +55,19 @@ function getUsers() {
  * 添加新用户
  */
 function addUser($userData) {
+    if (!is_writable(USERS_FILE)) {
+        error_log('用户数据文件不可写');
+        return false;
+    }
+    
     $userString = implode('|', $userData);
-    file_put_contents(USERS_FILE, $userString . "\n", FILE_APPEND);
+    $result = file_put_contents(USERS_FILE, $userString . "\n", FILE_APPEND);
+    
+    if ($result === false) {
+        error_log('写入用户数据失败');
+        return false;
+    }
+    
     return true;
 }
 
@@ -198,11 +237,22 @@ function updateBookingStatus($bookingId, $status) {
             $booking['status'] = $status;
         }
         $updatedBookings[] = $booking['id'] . '|' . $booking['user_id'] . '|' . $booking['room_id'] . '|' . 
-                             $booking['check_in'] . '|' . $booking['check_out'] . '|' . $booking['guests'] . '|' . 
-                             $booking['total_price'] . '|' . $booking['status'] . '|' . $booking['created_at'];
+                              $booking['check_in'] . '|' . $booking['check_out'] . '|' . $booking['guests'] . '|' . 
+                              $booking['total_price'] . '|' . $booking['status'] . '|' . $booking['created_at'];
     }
     
-    file_put_contents(BOOKINGS_FILE, implode("\n", array_filter($updatedBookings)));
+    if (!is_writable(BOOKINGS_FILE)) {
+        error_log('预订数据文件不可写');
+        return false;
+    }
+    
+    $result = file_put_contents(BOOKINGS_FILE, implode("\n", array_filter($updatedBookings)));
+    
+    if ($result === false) {
+        error_log('更新预订状态失败');
+        return false;
+    }
+    
     return true;
 }
 
@@ -214,18 +264,43 @@ function isRoomAvailable($roomId, $checkIn, $checkOut) {
     if (!$room) return false;
     
     $bookings = getBookings();
-    $bookedCount = 0;
+    $totalRooms = $room['quantity'];
     
-    foreach ($bookings as $booking) {
-        if ($booking['room_id'] == $roomId && $booking['status'] != 'cancelled') {
-            // 检查日期是否重叠
-            if (($checkIn <= $booking['check_out'] && $checkOut >= $booking['check_in'])) {
-                $bookedCount++;
+    // 将入住和退房日期转为日期对象
+    $checkInDate = new DateTime($checkIn);
+    $checkOutDate = new DateTime($checkOut);
+    
+    // 生成预订期间的所有日期
+    $dateRange = new DatePeriod(
+        $checkInDate,
+        new DateInterval('P1D'),
+        $checkOutDate
+    );
+    
+    // 检查每一天的房间可用情况
+    foreach ($dateRange as $date) {
+        $currentDate = $date->format('Y-m-d');
+        $bookedCount = 0;
+        
+        foreach ($bookings as $booking) {
+            if ($booking['room_id'] == $roomId && $booking['status'] != 'cancelled') {
+                $bookingCheckIn = new DateTime($booking['check_in']);
+                $bookingCheckOut = new DateTime($booking['check_out']);
+                
+                // 如果当前日期在预订范围内，增加已预订计数
+                if ($date >= $bookingCheckIn && $date < $bookingCheckOut) {
+                    $bookedCount++;
+                }
             }
+        }
+        
+        // 如果任何一天房间数量不足，则返回不可用
+        if ($bookedCount >= $totalRooms) {
+            return false;
         }
     }
     
-    return $bookedCount < $room['quantity'];
+    return true;
 }
 
 /**
@@ -233,6 +308,90 @@ function isRoomAvailable($roomId, $checkIn, $checkOut) {
  */
 function generateId() {
     return uniqid();
+}
+
+/**
+ * 添加新房间
+ */
+function addRoom($roomData) {
+    if (!is_writable(ROOMS_FILE)) {
+        error_log('房间数据文件不可写');
+        return false;
+    }
+    
+    $roomString = implode('|', [
+        $roomData['id'],
+        $roomData['type'],
+        $roomData['price'],
+        $roomData['breakfast'],
+        $roomData['capacity'],
+        $roomData['description'],
+        $roomData['image'],
+        $roomData['quantity']
+    ]);
+    
+    $result = file_put_contents(ROOMS_FILE, $roomString . "\n", FILE_APPEND);
+    
+    if ($result === false) {
+        error_log('添加房间数据失败');
+        return false;
+    }
+    
+    return true;
+}
+
+/**
+ * 更新房间信息
+ */
+function updateRoom($roomId, $roomData) {
+    $rooms = getRooms();
+    $updatedRooms = [];
+    $found = false;
+    
+    foreach ($rooms as $room) {
+        if ($room['id'] == $roomId) {
+            $updatedRooms[] = implode('|', [
+                $roomId,
+                $roomData['type'],
+                $roomData['price'],
+                $roomData['breakfast'],
+                $roomData['capacity'],
+                $roomData['description'],
+                $roomData['image'],
+                $roomData['quantity']
+            ]);
+            $found = true;
+        } else {
+            $updatedRooms[] = implode('|', [
+                $room['id'],
+                $room['type'],
+                $room['price'],
+                $room['breakfast'],
+                $room['capacity'],
+                $room['description'],
+                $room['image'],
+                $room['quantity']
+            ]);
+        }
+    }
+    
+    if (!$found) {
+        return false;
+    }
+    
+    if (!is_writable(ROOMS_FILE)) {
+        error_log('房间数据文件不可写');
+        return false;
+    }
+    
+    $result = file_put_contents(ROOMS_FILE, implode("\n", $updatedRooms));
+    
+    if ($result === false) {
+        error_log('更新房间数据失败');
+        return false;
+    }
+    
+    return true;
 }
 
 // 初始化房间数据

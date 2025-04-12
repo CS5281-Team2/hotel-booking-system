@@ -14,6 +14,8 @@ $guests = isset($_GET['guests']) ? intval($_GET['guests']) : 2;
 // 验证日期
 $validDates = true;
 $dateError = '';
+$dateChanged = false;
+$maxBookingDays = 30; // 设置最大预订天数
 
 // 总是进行日期验证，因为现在我们总是有日期
 $checkInDate = new DateTime($checkIn);
@@ -22,24 +24,42 @@ $todayDate = new DateTime();
 $todayDate->setTime(0, 0, 0); // 重置时间部分
 
 if ($checkInDate < $todayDate) {
-    $validDates = false;
-    $dateError = 'Check-in date cannot be in the past';
+    $validDates = true; // 仍然允许搜索，但通知用户已修正
+    $dateError = 'Check-in date cannot be in the past, automatically adjusted to today';
+    $dateChanged = true;
     // 自动修正到今天
     $checkIn = $today;
     $checkInDate = new DateTime($checkIn);
 } 
 
 if ($checkOutDate <= $checkInDate) {
-    $validDates = false;
-    $dateError = 'Check-out date must be after check-in date';
+    $validDates = true; // 仍然允许搜索，但通知用户已修正
+    $dateError .= $dateError ? ' and ' : '';
+    $dateError .= 'Check-out date must be after check-in date, automatically adjusted';
+    $dateChanged = true;
     // 自动修正到入住日期后一天
     $nextDay = clone $checkInDate;
     $nextDay->modify('+1 day');
     $checkOut = $nextDay->format('Y-m-d');
     $checkOutDate = $nextDay;
-    // 修正后，日期应该是有效的
-    $validDates = true;
-    $dateError = '';
+}
+
+// 检查预订天数是否超过最大限制
+$interval = $checkInDate->diff($checkOutDate);
+$nights = $interval->days;
+
+if ($nights > $maxBookingDays) {
+    $validDates = true; // 仍然允许搜索，但通知用户已修正
+    $dateError .= $dateError ? ' and ' : '';
+    $dateError .= "Maximum stay is {$maxBookingDays} days, automatically adjusted";
+    $dateChanged = true;
+    // 自动修正到最大天数
+    $maxCheckOut = clone $checkInDate;
+    $maxCheckOut->modify("+{$maxBookingDays} days");
+    $checkOut = $maxCheckOut->format('Y-m-d');
+    $checkOutDate = $maxCheckOut;
+    $interval = $checkInDate->diff($checkOutDate);
+    $nights = $interval->days;
 }
 
 // 获取所有房间
@@ -84,10 +104,10 @@ if ($validDates) {
                     <div class="search-col">
                         <label for="guests"><i class="fas fa-user-friends"></i> Guests</label>
                         <select id="guests" name="guests" class="form-control" required>
-                            <option value="1">1 Guest</option>
-                            <option value="2" selected>2 Guests</option>
-                            <option value="3">3 Guests</option>
-                            <option value="4">4 Guests</option>
+                            <option value="1" <?php echo ($guests == 1) ? 'selected' : ''; ?>>1 Guest</option>
+                            <option value="2" <?php echo ($guests == 2) ? 'selected' : ''; ?>>2 Guests</option>
+                            <option value="3" <?php echo ($guests == 3) ? 'selected' : ''; ?>>3 Guests</option>
+                            <option value="4" <?php echo ($guests == 4) ? 'selected' : ''; ?>>4 Guests</option>
                         </select>
                     </div>
 
@@ -106,6 +126,10 @@ if ($validDates) {
         <div class="alert alert-error">
             No rooms available for your selected dates and number of guests. Please try different dates or reduce the
             number of guests.
+        </div>
+        <?php elseif ($dateChanged): ?>
+        <div class="alert alert-info">
+            <i class="fas fa-info-circle"></i> <?php echo $dateError; ?>
         </div>
         <?php else: ?>
         <div>
