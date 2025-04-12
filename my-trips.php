@@ -123,6 +123,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['cancel_booking'])) {
                                         <div>
                                             <p><strong>Guests:</strong> <?php echo $booking['guests']; ?></p>
                                             <p><strong>Nights:</strong> <?php echo $booking['nights']; ?></p>
+                                            <?php if (isset($booking['mobile_phone']) && !empty($booking['mobile_phone'])): ?>
+                                            <p><strong>Contact:</strong> <?php echo $booking['mobile_phone']; ?></p>
+                                            <?php endif; ?>
                                         </div>
                                     </div>
                                 </div>
@@ -168,6 +171,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['cancel_booking'])) {
                                         <div>
                                             <p><strong>Guests:</strong> <?php echo $booking['guests']; ?></p>
                                             <p><strong>Nights:</strong> <?php echo $booking['nights']; ?></p>
+                                            <?php if (isset($booking['mobile_phone']) && !empty($booking['mobile_phone'])): ?>
+                                            <p><strong>Contact:</strong> <?php echo $booking['mobile_phone']; ?></p>
+                                            <?php endif; ?>
                                         </div>
                                     </div>
                                 </div>
@@ -205,6 +211,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['cancel_booking'])) {
                                         <div>
                                             <p><strong>Guests:</strong> <?php echo $booking['guests']; ?></p>
                                             <p><strong>Nights:</strong> <?php echo $booking['nights']; ?></p>
+                                            <?php if (isset($booking['mobile_phone']) && !empty($booking['mobile_phone'])): ?>
+                                            <p><strong>Contact:</strong> <?php echo $booking['mobile_phone']; ?></p>
+                                            <?php endif; ?>
                                         </div>
                                     </div>
                                 </div>

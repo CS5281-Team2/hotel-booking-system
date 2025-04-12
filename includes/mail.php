@@ -51,7 +51,18 @@ function sendBookingConfirmationEmail($userEmail, $userName, $bookingDetails, $r
                     <tr>
                         <th>Number of Guests</th>
                         <td>' . $bookingDetails['guests'] . '</td>
-                    </tr>
+                    </tr>';
+    
+    // 添加手机号码信息（如果有）
+    if (isset($bookingDetails['mobile_phone']) && !empty($bookingDetails['mobile_phone'])) {
+        $message .= '
+                    <tr>
+                        <th>Contact Phone</th>
+                        <td>' . $bookingDetails['mobile_phone'] . '</td>
+                    </tr>';
+    }
+    
+    $message .= '
                     <tr>
                         <th>Total Price</th>
                         <td>$' . number_format($bookingDetails['total_price'], 2) . '</td>
@@ -135,7 +146,18 @@ function sendBookingCancellationEmail($userEmail, $userName, $bookingDetails, $r
                     <tr>
                         <th>Check-out Date</th>
                         <td>' . date('F j, Y', strtotime($bookingDetails['check_out'])) . '</td>
-                    </tr>
+                    </tr>';
+    
+    // 添加手机号码信息（如果有）
+    if (isset($bookingDetails['mobile_phone']) && !empty($bookingDetails['mobile_phone'])) {
+        $message .= '
+                    <tr>
+                        <th>Contact Phone</th>
+                        <td>' . $bookingDetails['mobile_phone'] . '</td>
+                    </tr>';
+    }
+    
+    $message .= '
                 </table>
                 
                 <p>If you did not request this cancellation or have any questions, please contact us immediately.</p>

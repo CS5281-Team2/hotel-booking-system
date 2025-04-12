@@ -1,1 +1,2 @@
 67f9e7c422f48|Admin User|admin@luxuryhotel.com|1234567890|$2y$10$nNRw.Zgy7PmlreFOGsGtoO/oRWiiQQvslMZjfIvUb.XYC/5eBl97a|admin|2025-04-12 06:10:44
+67fa254739645|Test1|123456@qq.com|13811012202|$2y$10$2iccCYr/WEh1q2Nj7IeLn.4D5roQz.LYtmvZp75GWBmlExCRDQYVu|user|2025-04-12 10:33:11

@@ -117,5 +117,40 @@ function initAdmin() {
     }
 }
 
+/**
+ * 更新用户个人资料
+ */
+function updateUserProfile($userId, $name, $mobile) {
+    $users = getUsers();
+    $updatedUsers = [];
+    $success = false;
+    
+    foreach ($users as $user) {
+        $userData = explode('|', $user);
+        if (isset($userData[0]) && $userData[0] == $userId) {
+            // 更新用户信息
+            $userData[1] = $name;
+            $userData[3] = $mobile;
+            $success = true;
+        }
+        $updatedUsers[] = implode('|', $userData);
+    }
+    
+    if ($success) {
+        // 写入更新后的用户数据
+        if (file_put_contents(USERS_FILE, implode("\n", $updatedUsers)) !== false) {
+            return [
+                'success' => true,
+                'message' => 'Profile updated successfully'
+            ];
+        }
+    }
+    
+    return [
+        'success' => false,
+        'message' => 'Failed to update profile'
+    ];
+}
+
 // 初始化管理员账户
 initAdmin();

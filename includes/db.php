@@ -179,7 +179,7 @@ function getBookings() {
         if (empty($booking)) continue;
         $bookingData = explode('|', $booking);
         if (count($bookingData) >= 8) {
-            $bookingsData[] = [
+            $bookingInfo = [
                 'id' => $bookingData[0],
                 'user_id' => $bookingData[1],
                 'room_id' => $bookingData[2],
@@ -190,6 +190,13 @@ function getBookings() {
                 'status' => $bookingData[7],
                 'created_at' => isset($bookingData[8]) ? $bookingData[8] : date('Y-m-d H:i:s')
             ];
+            
+            // 添加手机号码字段支持
+            if (isset($bookingData[9])) {
+                $bookingInfo['mobile_phone'] = $bookingData[9];
+            }
+            
+            $bookingsData[] = $bookingInfo;
         }
     }
     
@@ -236,9 +243,17 @@ function updateBookingStatus($bookingId, $status) {
         if ($booking['id'] == $bookingId) {
             $booking['status'] = $status;
         }
-        $updatedBookings[] = $booking['id'] . '|' . $booking['user_id'] . '|' . $booking['room_id'] . '|' . 
-                              $booking['check_in'] . '|' . $booking['check_out'] . '|' . $booking['guests'] . '|' . 
-                              $booking['total_price'] . '|' . $booking['status'] . '|' . $booking['created_at'];
+        
+        $bookingStr = $booking['id'] . '|' . $booking['user_id'] . '|' . $booking['room_id'] . '|' . 
+                     $booking['check_in'] . '|' . $booking['check_out'] . '|' . $booking['guests'] . '|' . 
+                     $booking['total_price'] . '|' . $booking['status'] . '|' . $booking['created_at'];
+        
+        // 添加手机号码字段
+        if (isset($booking['mobile_phone'])) {
+            $bookingStr .= '|' . $booking['mobile_phone'];
+        }
+        
+        $updatedBookings[] = $bookingStr;
     }
     
     if (!is_writable(BOOKINGS_FILE)) {

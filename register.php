@@ -26,8 +26,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // 验证数据
     if (empty($name)) {
         $errorMessage = 'Please enter your name';
-    } elseif (empty($mobile) || !preg_match('/^\d{10}$/', $mobile)) {
-        $errorMessage = 'Please enter a valid 10-digit mobile number';
+    } elseif (empty($mobile)) {
+        $errorMessage = 'Please enter your mobile number';
+    } elseif (!preg_match('/^1[3-9]\d{9}$/', $mobile) && !preg_match('/^[5-9]\d{7}$/', $mobile)) {
+        $errorMessage = 'Please enter a valid phone number (China mainland: 11 digits starting with 1, Hong Kong: 8 digits starting with 5-9)';
     } elseif (empty($email) || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
         $errorMessage = 'Please enter a valid email address';
     } elseif (empty($password) || strlen($password) < 6) {
@@ -135,12 +137,22 @@ document.addEventListener('DOMContentLoaded', function() {
                 hasError = true;
             }
             // 验证手机号
-            else if (mobile === '' || !/^\d{10}$/.test(mobile)) {
-                errorMessage = 'Please enter a valid 10-digit mobile number';
+            else if (mobile === '') {
+                errorMessage = 'Please enter your mobile number';
+                hasError = true;
+            }
+            // 验证手机号格式 - 中国大陆或香港
+            else if (!(/^1[3-9]\d{9}$/.test(mobile) || /^[5-9]\d{7}$/.test(mobile))) {
+                errorMessage = 'Please enter a valid phone number (China mainland: 11 digits starting with 1, Hong Kong: 8 digits starting with 5-9)';
                 hasError = true;
             }
             // 验证邮箱
-            else if (email === '' || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+            else if (email === '') {
+                errorMessage = 'Please enter your email address';
+                hasError = true;
+            }
+            // 验证邮箱格式
+            else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
                 errorMessage = 'Please enter a valid email address';
                 hasError = true;
             }

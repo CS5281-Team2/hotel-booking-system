@@ -79,6 +79,7 @@ foreach ($allBookings as &$booking) {
                     <tr style="background-color: var(--primary-color); color: white;">
                         <th style="padding: 12px 15px; text-align: left;">ID</th>
                         <th style="padding: 12px 15px; text-align: left;">Guest</th>
+                        <th style="padding: 12px 15px; text-align: left;">Contact</th>
                         <th style="padding: 12px 15px; text-align: left;">Room</th>
                         <th style="padding: 12px 15px; text-align: left;">Check-in</th>
                         <th style="padding: 12px 15px; text-align: left;">Check-out</th>
@@ -91,13 +92,22 @@ foreach ($allBookings as &$booking) {
                 <tbody>
                     <?php if (empty($allBookings)): ?>
                         <tr>
-                            <td colspan="9" style="padding: 20px; text-align: center;">No bookings found</td>
+                            <td colspan="10" style="padding: 20px; text-align: center;">No bookings found</td>
                         </tr>
                     <?php else: ?>
                         <?php foreach ($allBookings as $booking): ?>
                             <tr style="border-bottom: 1px solid #ddd;" class="booking-row" data-booking-id="<?php echo $booking['id']; ?>">
                                 <td style="padding: 12px 15px;"><?php echo substr($booking['id'], -8); ?></td>
                                 <td style="padding: 12px 15px;"><?php echo $booking['user'][1]; ?></td>
+                                <td style="padding: 12px 15px;">
+                                    <?php 
+                                        if (isset($booking['mobile_phone']) && !empty($booking['mobile_phone'])) {
+                                            echo $booking['mobile_phone'];
+                                        } else {
+                                            echo $booking['user'][3]; // 使用用户注册的手机号
+                                        }
+                                    ?>
+                                </td>
                                 <td style="padding: 12px 15px;"><?php echo $booking['room']['type']; ?></td>
                                 <td style="padding: 12px 15px;"><?php echo date('M j, Y', strtotime($booking['check_in'])); ?></td>
                                 <td style="padding: 12px 15px;"><?php echo date('M j, Y', strtotime($booking['check_out'])); ?></td>

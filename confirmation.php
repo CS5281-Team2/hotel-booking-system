@@ -49,6 +49,9 @@ $nights = $interval->days;
                 <div style="margin-top: 20px;">
                     <p><strong>Booking Reference:</strong> <?php echo $booking['id']; ?></p>
                     <p><strong>Booking Date:</strong> <?php echo date('F j, Y', strtotime($booking['created_at'])); ?></p>
+                    <?php if (isset($booking['mobile_phone']) && !empty($booking['mobile_phone'])): ?>
+                    <p><strong>Contact Phone:</strong> <?php echo $booking['mobile_phone']; ?></p>
+                    <?php endif; ?>
                 </div>
                 
                 <div style="display: flex; margin: 20px 0; border-top: 1px solid #ddd; border-bottom: 1px solid #ddd; padding: 20px 0;">
