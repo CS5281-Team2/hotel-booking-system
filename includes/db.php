@@ -108,7 +108,7 @@ function initRooms() {
     if (filesize(ROOMS_FILE) > 0) return;
     
     $rooms = [
-        ['1', 'Deluxe Room', '199.99', 'Yes', '2', 'Spacious room with king-size bed and city view.', 'deluxe.jpg', '5'],
+        ['1', 'Deluxe Room', '199.99', 'Yes', '2', 'Spacious room with king-size bed, city view and premium bedding.', 'deluxe.jpg', '5'],
         ['2', 'Executive Suite', '299.99', 'Yes', '2', 'Luxurious suite with separate living area and premium amenities.', 'executive.jpg', '3'],
         ['3', 'Family Room', '249.99', 'Yes', '4', 'Perfect for families with two queen beds and extra space.', 'family.jpg', '4'],
         ['4', 'Standard Room', '149.99', 'No', '2', 'Comfortable room with all essential amenities.', 'standard.jpg', '8']

@@ -1,97 +1,38 @@
-# ---------------------------
-# Project Specific Ignores
-# ---------------------------
+# Data files
+/data/*.txt
 
-# Local data files (uncomment if not tracking test data)
-# backend/data/*.dat
-# backend/data/*.tmp
-
-# Keep empty data directory
-!backend/data/.keep
-
-# ---------------------------
-# Environment/IDE
-# ---------------------------
-
-# Local development environment files
-.env
-.env.local
-.env*.backup
-
-# IDE specific configurations
+# IDE and editor folders
 .idea/
 .vscode/
-*.swp
-*.swo
+*.sublime-project
+*.sublime-workspace
 
 # OS generated files
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
 Thumbs.db
 
-# ---------------------------
-# Dependency Directories
-# ---------------------------
-
-# PHP dependencies (Composer)
-/vendor/
-composer.lock
-
-# JavaScript dependencies
-/node_modules/
-/package-lock.json
-
-# CSS preprocessing outputs
-*.css.map
-*.sass.map
-
-# ---------------------------
-# Build Artifacts
-# ---------------------------
-
-# Frontend build outputs
-/dist/
-/build/
-*.min.js
-*.min.css
-
-# Compiled templates
-/templates_c/
-
-# ---------------------------
-# Logs & Debug Files 
-# ---------------------------
-
-# Server logs
+# Logs
 *.log
 logs/
-error_log
-
-# Debug files
-*.debug
-*.stackdump
-
-# ---------------------------
-# Temporary Files
-# ---------------------------
 
 # Cache files
+*.cache
+
+# Temporary files
 *.tmp
-*.temp
-.cache/
-
-# Session files
-*.sess
-*.session
-
-# Uploaded media (if applicable)
-/uploads/
-!/uploads/.keep
-
-# ---------------------------
-# Editor/OS Backup Files
-# ---------------------------
 *.bak
-*~
 *.swp
-*.swo
-*.orig
+*~.nib
+
+# PHP specific
+/vendor/
+composer.lock
+.phpunit.result.cache
+
+# Environment specific files
+.env

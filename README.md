@@ -1,40 +1,114 @@
-# hotel-booking-system
+# Hotel Booking System
 [CS5281 25Spring] Hotel Booking System - Group 2
 
-.gitkeep是空文件夹占位符，文件夹下有文件后可以自行删除
+## Project Overview
+A comprehensive hotel booking system built with PHP that allows users to search for rooms, make reservations, and manage their bookings. This system features a clean, responsive interface inspired by Marriott's design principles while maintaining simplicity and functionality.
 
-## 文件结构
+## Features
+- ​**​User Authentication System​**​
+  - Register new accounts
+  - Login with existing credentials
+  - Session management
+  
+- ​**​Room Management​**​
+  - View different room types (Standard, Deluxe, Executive Suite, Family Room)
+  - Room availability checking
+  - Detailed room information and images
+  
+- ​**​Booking System​**​
+  - Date-based room search
+  - Guest quantity selection
+  - Booking confirmation process
+  - Payment simulation
+  
+- ​**​User Dashboard​**​
+  - View upcoming stays
+  - View booking history
+  - Cancel existing bookings
+  
+- ​**​Admin Panel​**​
+  - Manage all bookings
+  - View daily check-ins and check-outs
+  - System overview statistics
+
+## Technologies Used
+- ​**​Frontend​**​: HTML5, CSS3, JavaScript
+- ​**​Backend​**​: PHP
+- ​**​Data Storage​**​: Text files (no database required)
+- ​**​Styling​**​: Custom CSS with responsive design
+- ​**​Icons​**​: Font Awesome
+
+## Installation Instructions
+
+### Prerequisites
+- PHP 7.4 or higher
+- Web server (Apache/XAMPP recommended)
+
+### Local Development Setup
+1. Clone the repository:
+git clone https://github.com/yourusername/hotel-booking-system.git
+
+2. Move the project to your web server's document root (e.g., htdocs folder for XAMPP)
+
+3. Ensure the `data` directory has write permissions:
+chmod 755 data
+
+4. Access the site through your local web server:
+http://localhost/hotel-booking-system/
+
+### Online Deployment
+1. Upload all files to your web hosting provider
+2. Ensure the `data` directory has proper write permissions
+3. Access your website through the provided domain name
+
+## Project Structure
+```
 hotel-booking/
-│
-├── assets/                  # 静态资源文件夹
-│   ├── css/
-│   │   └── style.css        # 主样式表
-│   ├── js/                  # JavaScript文件（可扩展）
-│   └── images/              # 图片存储（目前使用placeholder）
-│
-├── includes/                # 共享组件和功能
-│   ├── header.php           # 页眉组件 
-│   ├── footer.php           # 页脚组件
-│   ├── db.php               # 数据操作函数
-│   └── auth.php             # 用户认证功能
-│
-├── admin/                   # 管理员功能
-│   ├── index.php            # 管理员仪表板
-│   └── bookings.php         # 预订管理页面
-│
-├── data/                    # 数据存储（文本文件）
-│   ├── users.txt            # 用户数据
-│   ├── rooms.txt            # 房间数据
-│   └── bookings.txt         # 预订数据
-│
-├── index.php                # 网站首页
-├── search.php               # 搜索结果页
-├── room.php                 # 房间详情页
-├── booking.php              # 预订流程页
-├── confirmation.php         # 预订确认页
-├── my-trips.php             # 我的旅程页
-├── profile.php              # 个人资料页
-├── login.php                # 登录页
-├── register.php             # 注册页
-└── logout.php               # 登出处理
+├── assets/       # Static resources
+│ ├── css/        # Stylesheets
+│ ├── js/         # JavaScript files
+│ └── images/     # Images and room photos
+│ └── rooms/      # Room type specific images
+├── includes/     # Shared components
+│ ├── header.php  # Site header
+│ ├── footer.php  # Site footer
+│ ├── db.php      # Data operations
+│ └── auth.php    # Authentication functions
+├── admin/        # Admin section
+│ ├── index.php   # Admin dashboard
+│ └── bookings.php # Booking management
+├── data/ # Data storage
+│ ├── users.txt   # User information
+│ ├── rooms.txt   # Room information
+│ └── bookings.txt # Booking records
+├── index.php     # Homepage
+├── search.php    # Room search
+├── room.php      # Room details
+├── booking.php   # Booking process
+└── various other pages # Login, register, etc.
+```
 
+## Usage
+### For Users
+1. Browse available rooms on the homepage
+2. Use the search functionality to find rooms for specific dates
+3. Register an account or login to make a booking
+4. Complete the booking process
+5. View and manage bookings from your account
+
+### For Administrators
+1. Login with admin credentials
+2. Access the admin panel
+3. View system statistics and manage bookings
+
+## Admin Access
+- ​**​Email​**​: admin@luxuryhotel.com
+- ​**​Password​**​: admin123
+
+## Credits
+- Project developed for CS5281 Spring 2025
+- Room images: Unsplash.com (free commercial use)
+- Icons: Font Awesome 5
+
+## License
+This project is created for educational purposes. All rights reserved.

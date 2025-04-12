@@ -46,7 +46,7 @@ $nights = $interval->days;
                 </div>
                 
                 <div style="display: flex; margin: 20px 0; border-top: 1px solid #ddd; border-bottom: 1px solid #ddd; padding: 20px 0;">
-                    <img src="https://via.placeholder.com/150x100?text=<?php echo str_replace(' ', '+', $room['type']); ?>" alt="<?php echo $room['type']; ?>" style="width: 150px; height: 100px; object-fit: cover; border-radius: 4px; margin-right: 20px;">
+                    <img src="assets/images/rooms/<?php echo $room['image']; ?>" alt="<?php echo $room['type']; ?>" style="width: 150px; height: 100px; object-fit: cover; border-radius: 4px; margin-right: 20px;">
                     <div>
                         <h3><?php echo $room['type']; ?></h3>
                         <p><?php echo $room['description']; ?></p>
