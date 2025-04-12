@@ -9,6 +9,7 @@ A comprehensive hotel booking system built with PHP that allows users to search 
   - Register new accounts
   - Login with existing credentials
   - Session management
+  - Profile management with editable personal information
   
 - **Room Management**
   - View different room types (Standard, Deluxe, Executive Suite, Family Room)
@@ -28,6 +29,7 @@ A comprehensive hotel booking system built with PHP that allows users to search 
   - View booking history
   - Cancel existing bookings (with time-based restrictions)
   - Real-time booking management with AJAX
+  - Edit personal profile information
   
 - **Admin Panel**
   - Manage all bookings with cancellation capabilities
@@ -62,6 +64,11 @@ A comprehensive hotel booking system built with PHP that allows users to search 
   - Comprehensive file operation error detection
   - User-friendly error messages
   - Automatic date correction with clear notifications
+
+- **International Phone Number Support**
+  - Support for China mainland phone numbers (11 digits, starting with 1)
+  - Support for Hong Kong phone numbers (8 digits, starting with 5-9)
+  - Consistent validation across registration, booking, and profile management
 
 ## Technologies Used
 - **Frontend**: HTML5, CSS3, JavaScript
@@ -169,8 +176,9 @@ hotel-booking/
 4. Complete the booking process
 5. Receive booking confirmation email
 6. View and manage bookings from your account
-7. Cancel bookings if needed (receive cancellation email)
-8. Note: Bookings cannot be cancelled within 24 hours of check-in
+7. Update personal information from your profile page
+8. Cancel bookings if needed (receive cancellation email)
+9. Note: Bookings cannot be cancelled within 24 hours of check-in
 
 ### For Administrators
 1. Login with admin credentials
