@@ -75,6 +75,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['cancel_booking'])) {
     <div class="container">
         <h1 style="margin-bottom: 20px;">My Trips</h1>
         
+        <div id="status-message"></div>
+        
         <?php if (!empty($successMessage)): ?>
         <div class="alert alert-success">
             <i class="fas fa-check-circle"></i> <?php echo $successMessage; ?>
@@ -103,7 +105,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['cancel_booking'])) {
                     </div>
                 <?php else: ?>
                     <?php foreach ($upcomingBookings as $booking): ?>
-                        <div class="card" style="margin-top: 20px;">
+                        <div class="card booking-card" data-booking-id="<?php echo $booking['id']; ?>" style="margin-top: 20px;">
                             <div class="card-body" style="display: flex; flex-wrap: wrap;">
                                 <div style="flex: 0 0 150px; margin-right: 20px;">
                                     <img src="https://via.placeholder.com/150x100?text=<?php echo str_replace(' ', '+', $booking['room']['type']); ?>" alt="<?php echo $booking['room']['type']; ?>" style="width: 150px; height: 100px; object-fit: cover; border-radius: 4px;">
@@ -127,12 +129,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['cancel_booking'])) {
                                 
                                 <div style="flex: 0 0 200px; text-align: right;">
                                     <p><strong>Total:</strong> $<?php echo number_format($booking['total_price'], 2); ?></p>
-                                    <p><strong>Status:</strong> <span style="color: #28a745;">Confirmed</span></p>
+                                    <p><strong>Status:</strong> <span class="booking-status" style="color: #28a745;">Confirmed</span></p>
                                     
-                                    <form action="my-trips.php" method="POST" style="margin-top: 10px;" onsubmit="return confirm('Are you sure you want to cancel this booking?');">
-                                        <input type="hidden" name="booking_id" value="<?php echo $booking['id']; ?>">
-                                        <button type="submit" name="cancel_booking" class="btn btn-primary" style="background-color: #dc3545;">Cancel Booking</button>
-                                    </form>
+                                    <div class="cancel-button-container">
+                                        <button class="btn btn-primary cancel-booking-btn" data-booking-id="<?php echo $booking['id']; ?>" style="background-color: #dc3545; margin-top: 10px;">Cancel Booking</button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -220,5 +221,93 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['cancel_booking'])) {
         <?php endif; ?>
     </div>
 </section>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // 找到所有取消预订按钮
+    const cancelButtons = document.querySelectorAll('.cancel-booking-btn');
+    const statusMessage = document.getElementById('status-message');
+    
+    cancelButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            const bookingId = this.getAttribute('data-booking-id');
+            const bookingCard = this.closest('.booking-card');
+            const buttonContainer = this.parentElement;
+            
+            // 确认取消
+            if (!confirm('Are you sure you want to cancel this booking?')) {
+                return;
+            }
+            
+            // 显示加载状态
+            this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Cancelling...';
+            this.disabled = true;
+            
+            // 准备表单数据
+            const formData = new FormData();
+            formData.append('booking_id', bookingId);
+            
+            // 发送AJAX请求
+            fetch('api/cancel_booking.php', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // 更新UI
+                    bookingCard.querySelector('.booking-status').textContent = 'Cancelled';
+                    bookingCard.querySelector('.booking-status').style.color = '#dc3545';
+                    buttonContainer.innerHTML = '-';
+                    
+                    // 显示成功消息
+                    statusMessage.innerHTML = `
+                        <div class="alert alert-success">
+                            <i class="fas fa-check-circle"></i> ${data.message}
+                        </div>
+                    `;
+                    
+                    // 3秒后淡出消息
+                    setTimeout(() => {
+                        const alert = statusMessage.querySelector('.alert');
+                        if (alert) {
+                            alert.style.transition = 'opacity 1s';
+                            alert.style.opacity = '0';
+                            setTimeout(() => {
+                                statusMessage.innerHTML = '';
+                            }, 1000);
+                        }
+                    }, 3000);
+                } else {
+                    // 恢复按钮状态
+                    this.innerHTML = 'Cancel Booking';
+                    this.disabled = false;
+                    
+                    // 显示错误消息
+                    statusMessage.innerHTML = `
+                        <div class="alert alert-error">
+                            <i class="fas fa-exclamation-circle"></i> ${data.message}
+                        </div>
+                    `;
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                
+                // 恢复按钮状态
+                this.innerHTML = 'Cancel Booking';
+                this.disabled = false;
+                
+                // 显示错误消息
+                statusMessage.innerHTML = `
+                    <div class="alert alert-error">
+                        <i class="fas fa-exclamation-circle"></i> An error occurred. Please try again later.
+                    </div>
+                `;
+            });
+        });
+    });
+});
+</script>
 
 <?php include 'includes/footer.php'; ?>

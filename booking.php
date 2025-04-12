@@ -1,85 +1,57 @@
 <?php
-$pageTitle = 'Book Room';
-include 'includes/header.php';
-require_once 'includes/db.php';
+$pageTitle = 'Manage Bookings';
+$adminPage = true;
+include '../includes/header.php';
+require_once '../includes/db.php';
+require_once '../includes/auth.php';
 
-// 检查用户是否已登录
-if (!isset($_SESSION['user_id'])) {
-    $_SESSION['redirect_after_login'] = $_SERVER['REQUEST_URI'];
-    header('Location: login.php');
+// 验证管理员权限
+if (!isAdmin()) {
+    header('Location: ../login.php');
     exit;
 }
 
-// 获取预订信息
-$roomId = isset($_GET['room_id']) ? $_GET['room_id'] : '';
-$checkIn = isset($_GET['check_in']) ? $_GET['check_in'] : '';
-$checkOut = isset($_GET['check_out']) ? $_GET['check_out'] : '';
-$guests = isset($_GET['guests']) ? intval($_GET['guests']) : 1;
+// 获取所有预订
+$allBookings = getBookings();
 
-// 获取房间信息
-$room = getRoomById($roomId);
+// 按日期降序排序（最新的在前）
+usort($allBookings, function($a, $b) {
+    return strtotime($b['created_at']) - strtotime($a['created_at']);
+});
 
-// 验证数据
-$validData = true;
+// 处理取消预订
+$successMessage = '';
 $errorMessage = '';
-$maxBookingDays = 30; // 最大预订天数
-$minBookingDays = 1;  // 最小预订天数
 
-if (!$room) {
-    $validData = false;
-    $errorMessage = 'Invalid room selected';
-} elseif (empty($checkIn) || empty($checkOut)) {
-    $validData = false;
-    $errorMessage = 'Please select check-in and check-out dates';
-} else {
-    // 验证日期
-    $checkInDate = new DateTime($checkIn);
-    $checkOutDate = new DateTime($checkOut);
-    $today = new DateTime();
-    $today->setTime(0, 0, 0);
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['cancel_booking'])) {
+    $bookingId = $_POST['booking_id'];
+    $booking = getBookingById($bookingId);
     
-    if ($checkInDate < $today) {
-        $validData = false;
-        $errorMessage = 'Check-in date cannot be in the past';
-    } elseif ($checkOutDate <= $checkInDate) {
-        $validData = false;
-        $errorMessage = 'Check-out date must be after check-in date';
-    }
-    
-    // 验证预订天数
-    $interval = $checkInDate->diff($checkOutDate);
-    $nights = $interval->days;
-    
-    if ($nights < $minBookingDays) {
-        $validData = false;
-        $errorMessage = "Minimum stay is {$minBookingDays} night(s)";
-    } elseif ($nights > $maxBookingDays) {
-        $validData = false;
-        $errorMessage = "Maximum stay is {$maxBookingDays} nights";
-    }
-    
-    // 验证客人数量
-    if ($guests < 1 || $guests > $room['capacity']) {
-        $validData = false;
-        $errorMessage = 'Invalid number of guests';
-    }
-    
-    // 验证房间可用性
-    if (!isRoomAvailable($roomId, $checkIn, $checkOut)) {
-        $validData = false;
-        $errorMessage = 'Room is not available for the selected dates';
+    if ($booking) {
+        // 检查是否是入住当天
+        $checkInDate = new DateTime($booking['check_in']);
+        $today = new DateTime();
+        $today->setTime(0, 0, 0);
+        
+        // 如果今天已经是入住日期，不允许取消
+        if ($checkInDate->format('Y-m-d') == $today->format('Y-m-d')) {
+            $errorMessage = 'Cannot cancel bookings on check-in day';
+        } else {
+            if (updateBookingStatus($bookingId, 'cancelled')) {
+                $successMessage = 'Booking has been cancelled successfully';
+            } else {
+                $errorMessage = 'Failed to cancel booking. Please try again later';
+            }
+        }
+    } else {
+        $errorMessage = 'Booking not found';
     }
 }
 
-// 计算总价
-$totalPrice = 0;
-$nights = 0;
-
-if ($validData) {
-    $interval = $checkInDate->diff($checkOutDate);
-    $nights = $interval->days;
-    // 使用bcmul确保精确的浮点数乘法，然后保留两位小数
-    $totalPrice = number_format($room['price'] * $nights, 2, '.', '');
+// 添加房间和用户信息到预订
+foreach ($allBookings as &$booking) {
+    $booking['room'] = getRoomById($booking['room_id']);
+    $booking['user'] = getUserById($booking['user_id']);
 }
 
 // 处理预订提交
@@ -114,6 +86,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $validData) {
         $createdAt = date('Y-m-d H:i:s');
         
         $bookingData = [
+            'id' => $bookingId,
+            'user_id' => $userId,
+            'room_id' => $roomId,
+            'check_in' => $checkIn,
+            'check_out' => $checkOut,
+            'guests' => $guests,
+            'total_price' => $totalPrice,
+            'status' => $status,
+            'created_at' => $createdAt
+        ];
+        
+        $bookingString = implode('|', [
             $bookingId,
             $userId,
             $roomId,
@@ -123,9 +107,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $validData) {
             $totalPrice,
             $status,
             $createdAt
-        ];
+        ]);
         
         if (addBooking($bookingData)) {
+            // 发送确认邮件
+            require_once 'includes/mail.php';
+            
+            // 获取用户和房间信息
+            $user = getUserById($userId);
+            
+            // 发送确认邮件
+            sendBookingConfirmationEmail(
+                $_SESSION['user_email'],
+                $_SESSION['user_name'],
+                $bookingData,
+                $room
+            );
+            
             // 重定向到确认页面
             header("Location: confirmation.php?booking_id=$bookingId");
             exit;
@@ -138,245 +136,78 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $validData) {
 
 <section style="padding: 50px 0;">
     <div class="container">
-        <?php if (!$validData): ?>
-        <div class="alert alert-error">
-            <?php echo $errorMessage; ?>
-        </div>
-        <div style="text-align: center; margin-top: 20px;">
-            <a href="search.php" class="btn btn-primary">Back to Search</a>
-        </div>
-        <?php else: ?>
-        <h1 style="margin-bottom: 30px;">Complete Your Booking</h1>
-
+        <h1 style="margin-bottom: 20px;">Manage Bookings</h1>
+        
+        <?php if (!empty($successMessage)): ?>
+            <div class="alert alert-success">
+                <?php echo $successMessage; ?>
+            </div>
+        <?php endif; ?>
+        
         <?php if (!empty($errorMessage)): ?>
-        <div class="alert alert-error">
-            <?php echo $errorMessage; ?>
-        </div>
-        <?php endif; ?>
-
-        <div style="display: flex; flex-wrap: wrap;">
-            <div style="flex: 0 0 60%; max-width: 60%; padding-right: 30px;">
-                <form action="<?php echo $_SERVER['REQUEST_URI']; ?>" method="POST" id="booking-form">
-                    <h2>Guest Information</h2>
-
-                    <div class="form-group">
-                        <label for="guest_name">Guest Name</label>
-                        <input type="text" id="guest_name" name="guest_name" class="form-control"
-                            value="<?php echo $_SESSION['user_name']; ?>" required>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="guest_email">Email</label>
-                        <input type="email" id="guest_email" name="guest_email" class="form-control"
-                            value="<?php echo $_SESSION['user_email']; ?>" required>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="special_requests">Special Requests (optional)</label>
-                        <textarea id="special_requests" name="special_requests" class="form-control"
-                            rows="3"></textarea>
-                    </div>
-
-                    <h2 style="margin-top: 30px;">Payment Information</h2>
-
-                    <div class="form-group">
-                        <label for="card_name">Name on Card</label>
-                        <input type="text" id="card_name" name="card_name" class="form-control" required>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="card_number">Card Number</label>
-                        <input type="text" id="card_number" name="card_number" class="form-control"
-                            placeholder="1234 5678 9012 3456" required>
-                    </div>
-
-                    <div style="display: flex; gap: 20px;">
-                        <div class="form-group" style="flex: 1;">
-                            <label for="card_expiry">Expiry Date (MM/YY)</label>
-                            <input type="text" id="card_expiry" name="card_expiry" class="form-control"
-                                placeholder="MM/YY" required>
-                        </div>
-
-                        <div class="form-group" style="flex: 1;">
-                            <label for="card_cvv">CVV</label>
-                            <input type="text" id="card_cvv" name="card_cvv" class="form-control" placeholder="123"
-                                required>
-                        </div>
-                    </div>
-
-                    <div class="form-group" style="margin-top: 30px;">
-                        <button type="submit" class="btn btn-primary" style="width: 100%;">Complete Booking</button>
-                    </div>
-                </form>
+            <div class="alert alert-error">
+                <?php echo $errorMessage; ?>
             </div>
-
-            <div style="flex: 0 0 40%; max-width: 40%;">
-                <div class="card">
-                    <div class="card-body">
-                        <h2 class="card-title">Booking Summary</h2>
-
-                        <div style="display: flex; margin-bottom: 20px;">
-                            <img src="assets/images/rooms/<?php echo $room['image']; ?>"
-                                alt="<?php echo $room['type']; ?>"
-                                style="width: 100px; height: 100px; object-fit: cover; border-radius: 4px; margin-right: 15px;">
-                            <div>
-                                <h3><?php echo $room['type']; ?></h3>
-                                <p><?php echo $room['breakfast'] == 'Yes' ? 'Breakfast Included' : 'No Breakfast'; ?>
-                                </p>
-                            </div>
-                        </div>
-
-                        <div
-                            style="border-top: 1px solid #ddd; border-bottom: 1px solid #ddd; padding: 15px 0; margin-bottom: 15px;">
-                            <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
-                                <p><strong><i class="fas fa-calendar-check"></i> Check-in:</strong></p>
-                                <p><?php echo date('l, F j, Y', strtotime($checkIn)); ?></p>
-                            </div>
-
-                            <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
-                                <p><strong><i class="fas fa-calendar-times"></i> Check-out:</strong></p>
-                                <p><?php echo date('l, F j, Y', strtotime($checkOut)); ?></p>
-                            </div>
-
-                            <div style="display: flex; justify-content: space-between;">
-                                <p><strong><i class="fas fa-users"></i> Guests:</strong></p>
-                                <p><?php echo $guests; ?> Person<?php echo $guests > 1 ? 's' : ''; ?></p>
-                            </div>
-                        </div>
-
-                        <div style="margin-bottom: 15px;">
-                            <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
-                                <p><?php echo $nights; ?> Night<?php echo $nights > 1 ? 's' : ''; ?> x
-                                    $<?php echo $room['price']; ?></p>
-                                <p>$<?php echo number_format($totalPrice, 2); ?></p>
-                            </div>
-
-                            <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
-                                <p>Taxes & Fees</p>
-                                <p>Included</p>
-                            </div>
-                        </div>
-
-                        <div
-                            style="display: flex; justify-content: space-between; font-size: 1.2rem; font-weight: bold; border-top: 1px solid #ddd; padding-top: 15px;">
-                            <p>Total</p>
-                            <p>$<?php echo number_format($totalPrice, 2); ?></p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
         <?php endif; ?>
+        
+        <div style="overflow-x: auto; margin-top: 20px;">
+            <table style="width: 100%; border-collapse: collapse;">
+                <thead>
+                    <tr style="background-color: var(--primary-color); color: white;">
+                        <th style="padding: 12px 15px; text-align: left;">ID</th>
+                        <th style="padding: 12px 15px; text-align: left;">Guest</th>
+                        <th style="padding: 12px 15px; text-align: left;">Room</th>
+                        <th style="padding: 12px 15px; text-align: left;">Check-in</th>
+                        <th style="padding: 12px 15px; text-align: left;">Check-out</th>
+                        <th style="padding: 12px 15px; text-align: left;">Guests</th>
+                        <th style="padding: 12px 15px; text-align: right;">Total</th>
+                        <th style="padding: 12px 15px; text-align: center;">Status</th>
+                        <th style="padding: 12px 15px; text-align: center;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php if (empty($allBookings)): ?>
+                        <tr>
+                            <td colspan="9" style="padding: 20px; text-align: center;">No bookings found</td>
+                        </tr>
+                    <?php else: ?>
+                        <?php foreach ($allBookings as $booking): ?>
+                            <tr style="border-bottom: 1px solid #ddd;">
+                                <td style="padding: 12px 15px;"><?php echo substr($booking['id'], -8); ?></td>
+                                <td style="padding: 12px 15px;"><?php echo $booking['user'][1]; ?></td>
+                                <td style="padding: 12px 15px;"><?php echo $booking['room']['type']; ?></td>
+                                <td style="padding: 12px 15px;"><?php echo date('M j, Y', strtotime($booking['check_in'])); ?></td>
+                                <td style="padding: 12px 15px;"><?php echo date('M j, Y', strtotime($booking['check_out'])); ?></td>
+                                <td style="padding: 12px 15px;"><?php echo $booking['guests']; ?></td>
+                                <td style="padding: 12px 15px; text-align: right;">$<?php echo number_format($booking['total_price'], 2); ?></td>
+                                <td style="padding: 12px 15px; text-align: center;">
+                                    <?php if ($booking['status'] == 'confirmed'): ?>
+                                        <span style="background-color: #28a745; color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.8rem;">Confirmed</span>
+                                    <?php elseif ($booking['status'] == 'cancelled'): ?>
+                                        <span style="background-color: #dc3545; color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.8rem;">Cancelled</span>
+                                    <?php endif; ?>
+                                </td>
+                                <td style="padding: 12px 15px; text-align: center;">
+                                    <?php if ($booking['status'] == 'confirmed'): ?>
+                                        <form action="booking.php" method="POST" onsubmit="return confirm('Are you sure you want to cancel this booking?');">
+                                            <input type="hidden" name="booking_id" value="<?php echo $booking['id']; ?>">
+                                            <button type="submit" name="cancel_booking" style="background-color: #dc3545; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer;">Cancel</button>
+                                        </form>
+                                    <?php else: ?>
+                                        -
+                                    <?php endif; ?>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
+                </tbody>
+            </table>
+        </div>
+        
+        <div style="text-align: center; margin-top: 30px;">
+            <a href="index.php" class="btn btn-primary">Back to Dashboard</a>
+        </div>
     </div>
 </section>
 
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    const bookingForm = document.getElementById('booking-form');
-
-    if (bookingForm) {
-        // 验证信用卡号格式
-        const cardNumberInput = document.getElementById('card_number');
-        if (cardNumberInput) {
-            cardNumberInput.addEventListener('input', function(e) {
-                // 移除所有非数字字符
-                let value = this.value.replace(/\D/g, '');
-
-                // 限制长度为16位
-                if (value.length > 16) {
-                    value = value.slice(0, 16);
-                }
-
-                // 添加空格格式化
-                let formattedValue = '';
-                for (let i = 0; i < value.length; i++) {
-                    if (i > 0 && i % 4 === 0) {
-                        formattedValue += ' ';
-                    }
-                    formattedValue += value[i];
-                }
-
-                this.value = formattedValue;
-            });
-        }
-
-        // 验证过期日期格式
-        const expiryInput = document.getElementById('card_expiry');
-        if (expiryInput) {
-            expiryInput.addEventListener('input', function(e) {
-                // 移除所有非数字字符
-                let value = this.value.replace(/\D/g, '');
-
-                // 限制长度为4位
-                if (value.length > 4) {
-                    value = value.slice(0, 4);
-                }
-
-                // 添加斜杠格式化
-                if (value.length > 2) {
-                    value = value.slice(0, 2) + '/' + value.slice(2);
-                }
-
-                this.value = value;
-            });
-        }
-
-        // 验证CVV格式
-        const cvvInput = document.getElementById('card_cvv');
-        if (cvvInput) {
-            cvvInput.addEventListener('input', function(e) {
-                // 仅允许数字
-                let value = this.value.replace(/\D/g, '');
-
-                // 限制长度为3位
-                if (value.length > 3) {
-                    value = value.slice(0, 3);
-                }
-
-                this.value = value;
-            });
-        }
-
-        // 表单提交验证
-        bookingForm.addEventListener('submit', function(event) {
-            let isValid = true;
-            let errorMessage = '';
-
-            // 验证持卡人姓名
-            const cardName = document.getElementById('card_name').value.trim();
-            if (cardName === '') {
-                isValid = false;
-                errorMessage = 'Please enter the name on card';
-            }
-
-            // 验证卡号
-            const cardNumber = document.getElementById('card_number').value.replace(/\s/g, '');
-            if (cardNumber === '' || cardNumber.length !== 16 || !/^\d+$/.test(cardNumber)) {
-                isValid = false;
-                errorMessage = 'Please enter a valid 16-digit card number';
-            }
-
-            // 验证过期日期
-            const expiry = document.getElementById('card_expiry').value;
-            if (expiry === '' || !expiry.match(/^\d{2}\/\d{2}$/)) {
-                isValid = false;
-                errorMessage = 'Please enter a valid expiry date (MM/YY)';
-            }
-
-            // 验证CVV
-            const cvv = document.getElementById('card_cvv').value;
-            if (cvv === '' || cvv.length !== 3 || !/^\d+$/.test(cvv)) {
-                isValid = false;
-                errorMessage = 'Please enter a valid 3-digit CVV';
-            }
-
-            if (!isValid) {
-                event.preventDefault();
-                alert(errorMessage);
-            }
-        });
-    }
-});
-</script>
-
-<?php include 'includes/footer.php'; ?>
+<?php include '../includes/footer.php'; ?>

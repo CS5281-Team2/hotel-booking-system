@@ -87,7 +87,7 @@ if ($validDates) {
         <h1 style="margin-bottom: 20px;">Available Rooms</h1>
 
         <div class="search-box" style="margin-bottom: 20px;">
-            <form action="search.php" method="GET" id="search-form">
+            <form action="javascript:void(0);" method="GET" id="search-form">
                 <div class="search-row">
                     <div class="search-col">
                         <label for="check_in"><i class="far fa-calendar-alt"></i> Check-in Date</label>
@@ -112,58 +112,65 @@ if ($validDates) {
                     </div>
 
                     <div class="search-col" style="display: flex; align-items: flex-end;">
-                        <button type="submit" class="btn btn-primary" style="width: 100%;">Update Search</button>
+                        <button type="submit" class="btn btn-primary" style="width: 100%;">Search Rooms</button>
                     </div>
                 </div>
             </form>
         </div>
 
-        <?php if (!$validDates): ?>
-        <div class="alert alert-error">
-            <?php echo !empty($dateError) ? $dateError : 'Please select valid check-in and check-out dates to search for available rooms.'; ?>
+        <div id="loading-indicator" style="display: none; text-align: center; padding: 30px;">
+            <i class="fas fa-spinner fa-spin" style="font-size: 2rem; color: var(--primary-color);"></i>
+            <p style="margin-top: 10px;">Searching for available rooms...</p>
         </div>
-        <?php elseif (empty($availableRooms)): ?>
-        <div class="alert alert-error">
-            No rooms available for your selected dates and number of guests. Please try different dates or reduce the
-            number of guests.
-        </div>
-        <?php elseif ($dateChanged): ?>
-        <div class="alert alert-info">
-            <i class="fas fa-info-circle"></i> <?php echo $dateError; ?>
-        </div>
-        <?php else: ?>
-        <div>
-            <?php foreach ($availableRooms as $room): ?>
-            <div class="card" style="display: flex; margin-bottom: 30px;">
-                <div style="flex: 0 0 300px;">
-                    <img src="assets/images/rooms/<?php echo $room['image']; ?>" alt="<?php echo $room['type']; ?>"
-                        style="width: 100%; height: 100%; object-fit: cover;">
-                </div>
-                <div class="card-body"
-                    style="flex: 1; display: flex; flex-direction: column; justify-content: space-between;">
-                    <div>
-                        <h3 class="card-title"><?php echo $room['type']; ?></h3>
-                        <p class="card-text"><?php echo $room['description']; ?></p>
-                        <div style="margin-top: 15px;">
-                            <p><strong>Capacity:</strong> <?php echo $room['capacity']; ?> Persons</p>
-                            <p><strong>Breakfast:</strong>
-                                <?php echo $room['breakfast'] == 'Yes' ? 'Included' : 'Not included'; ?></p>
-                        </div>
-                    </div>
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 15px;">
-                        <div>
-                            <p style="font-size: 1.2rem;"><strong>$<?php echo $room['price']; ?></strong> per night</p>
-                            <p><strong>Total:</strong> $<?php echo number_format($room['total_price'], 2); ?> for
-                                <?php echo $nights; ?> night<?php echo $nights > 1 ? 's' : ''; ?></p>
-                        </div>
-                        <a href="booking.php?room_id=<?php echo $room['id']; ?>&check_in=<?php echo urlencode($checkIn); ?>&check_out=<?php echo urlencode($checkOut); ?>&guests=<?php echo $guests; ?>"
-                            class="btn btn-primary">Book Now</a>
-                    </div>
-                </div>
+
+        <div id="search-results">
+            <?php if (!$validDates): ?>
+            <div class="alert alert-error">
+                <?php echo !empty($dateError) ? $dateError : 'Please select valid check-in and check-out dates to search for available rooms.'; ?>
             </div>
-            <?php endforeach; ?>
+            <?php elseif ($dateChanged): ?>
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle"></i> <?php echo $dateError; ?>
+            </div>
+            <?php elseif (empty($availableRooms)): ?>
+            <div class="alert alert-error">
+                No rooms available for your selected dates and number of guests. Please try different dates or reduce the
+                number of guests.
+            </div>
+            <?php else: ?>
+            <div>
+                <?php foreach ($availableRooms as $room): ?>
+                <div class="card" style="display: flex; margin-bottom: 30px;">
+                    <div style="flex: 0 0 300px;">
+                        <img src="assets/images/rooms/<?php echo $room['image']; ?>" alt="<?php echo $room['type']; ?>"
+                            style="width: 100%; height: 100%; object-fit: cover;">
+                    </div>
+                    <div class="card-body"
+                        style="flex: 1; display: flex; flex-direction: column; justify-content: space-between;">
+                        <div>
+                            <h3 class="card-title"><?php echo $room['type']; ?></h3>
+                            <p class="card-text"><?php echo $room['description']; ?></p>
+                            <div style="margin-top: 15px;">
+                                <p><strong>Capacity:</strong> <?php echo $room['capacity']; ?> Persons</p>
+                                <p><strong>Breakfast:</strong>
+                                    <?php echo $room['breakfast'] == 'Yes' ? 'Included' : 'Not included'; ?></p>
+                            </div>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 15px;">
+                            <div>
+                                <p style="font-size: 1.2rem;"><strong>$<?php echo $room['price']; ?></strong> per night</p>
+                                <p><strong>Total:</strong> $<?php echo number_format($room['total_price'], 2); ?> for
+                                    <?php echo $nights; ?> night<?php echo $nights > 1 ? 's' : ''; ?></p>
+                            </div>
+                            <a href="booking.php?room_id=<?php echo $room['id']; ?>&check_in=<?php echo urlencode($checkIn); ?>&check_out=<?php echo urlencode($checkOut); ?>&guests=<?php echo $guests; ?>"
+                                class="btn btn-primary">Book Now</a>
+                        </div>
+                    </div>
+                </div>
+                <?php endforeach; ?>
+            </div>
+            <?php endif; ?>
         </div>
-        <?php endif; ?>
     </div>
 </section>
 
@@ -172,16 +179,131 @@ document.addEventListener('DOMContentLoaded', function() {
     const searchForm = document.getElementById('search-form');
     const checkInInput = document.getElementById('check_in');
     const checkOutInput = document.getElementById('check_out');
+    const guestsSelect = document.getElementById('guests');
+    const searchResults = document.getElementById('search-results');
+    const loadingIndicator = document.getElementById('loading-indicator');
 
-    // 表单验证
+    // 初始加载 - 如果有URL参数
+    if (window.location.search) {
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.has('check_in') && urlParams.has('check_out')) {
+            checkInInput.value = urlParams.get('check_in');
+            checkOutInput.value = urlParams.get('check_out');
+            if (urlParams.has('guests')) {
+                guestsSelect.value = urlParams.get('guests');
+            }
+        }
+    }
+
+    // 表单提交处理
     searchForm.addEventListener('submit', function(event) {
+        event.preventDefault();
+        
+        // 基本验证
         const checkIn = new Date(checkInInput.value);
         const checkOut = new Date(checkOutInput.value);
-
-        if (checkOut <= checkIn) {
-            event.preventDefault();
-            alert('Check-out date must be after check-in date');
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        
+        let hasError = false;
+        let errorMessage = '';
+        
+        if (checkIn < today) {
+            errorMessage = 'Check-in date cannot be in the past.';
+            hasError = true;
         }
+        
+        if (checkOut <= checkIn) {
+            errorMessage = 'Check-out date must be after check-in date.';
+            hasError = true;
+        }
+        
+        if (hasError) {
+            searchResults.innerHTML = `<div class="alert alert-error">${errorMessage}</div>`;
+            return;
+        }
+        
+        // 显示加载指示器
+        searchResults.style.display = 'none';
+        loadingIndicator.style.display = 'block';
+        
+        // 构建API URL
+        const apiUrl = `api/search_rooms.php?check_in=${checkInInput.value}&check_out=${checkOutInput.value}&guests=${guestsSelect.value}`;
+        
+        // 发送AJAX请求
+        fetch(apiUrl)
+            .then(response => response.json())
+            .then(data => {
+                // 隐藏加载指示器
+                loadingIndicator.style.display = 'none';
+                searchResults.style.display = 'block';
+                
+                // 处理响应
+                if (!data.success) {
+                    searchResults.innerHTML = `<div class="alert alert-error">${data.message}</div>`;
+                    return;
+                }
+                
+                // 更新浏览器历史记录（方便分享和刷新）
+                const newUrl = `search.php?check_in=${data.check_in}&check_out=${data.check_out}&guests=${data.guests}`;
+                window.history.pushState({path: newUrl}, '', newUrl);
+                
+                // 处理无可用房间的情况
+                if (data.rooms.length === 0) {
+                    searchResults.innerHTML = `
+                        <div class="alert alert-error">
+                            No rooms available for your selected dates and number of guests. Please try different dates or reduce the number of guests.
+                        </div>
+                    `;
+                    return;
+                }
+                
+                // 显示房间列表
+                let roomsHtml = '<div>';
+                
+                data.rooms.forEach(room => {
+                    roomsHtml += `
+                        <div class="card" style="display: flex; margin-bottom: 30px;">
+                            <div style="flex: 0 0 300px;">
+                                <img src="assets/images/rooms/${room.image}" alt="${room.type}" style="width: 100%; height: 100%; object-fit: cover;">
+                            </div>
+                            <div class="card-body" style="flex: 1; display: flex; flex-direction: column; justify-content: space-between;">
+                                <div>
+                                    <h3 class="card-title">${room.type}</h3>
+                                    <p class="card-text">${room.description}</p>
+                                    <div style="margin-top: 15px;">
+                                        <p><strong>Capacity:</strong> ${room.capacity} Persons</p>
+                                        <p><strong>Breakfast:</strong> ${room.breakfast == 'Yes' ? 'Included' : 'Not included'}</p>
+                                    </div>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 15px;">
+                                    <div>
+                                        <p style="font-size: 1.2rem;"><strong>$${room.price}</strong> per night</p>
+                                        <p><strong>Total:</strong> $${room.total_price} for ${data.nights} night${data.nights > 1 ? 's' : ''}</p>
+                                    </div>
+                                    <a href="booking.php?room_id=${room.id}&check_in=${data.check_in}&check_out=${data.check_out}&guests=${data.guests}" class="btn btn-primary">Book Now</a>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                roomsHtml += '</div>';
+                searchResults.innerHTML = roomsHtml;
+            })
+            .catch(error => {
+                // 隐藏加载指示器
+                loadingIndicator.style.display = 'none';
+                searchResults.style.display = 'block';
+                
+                // 显示错误信息
+                searchResults.innerHTML = `
+                    <div class="alert alert-error">
+                        An error occurred while searching for rooms. Please try again later.
+                    </div>
+                `;
+                console.error('Error:', error);
+            });
     });
 
     // 当入住日期变化时更新退房日期最小值
@@ -198,6 +320,14 @@ document.addEventListener('DOMContentLoaded', function() {
             checkOutInput.value = nextDayStr;
         }
     });
+    
+    // 首次加载时自动提交表单（如果有查询参数）
+    if (window.location.search) {
+        // 延迟一点执行，确保DOM完全加载
+        setTimeout(() => {
+            searchForm.dispatchEvent(new Event('submit'));
+        }, 100);
+    }
 });
 </script>
 

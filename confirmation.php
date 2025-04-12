@@ -31,9 +31,15 @@ $nights = $interval->days;
 
 <section style="padding: 50px 0;">
     <div class="container">
-        <div class="alert alert-success" style="text-align: center;">
-            <h2 style="color: #155724; margin-bottom: 10px;">Booking Confirmed!</h2>
-            <p>Your booking has been successfully confirmed. Thank you for choosing our Luxury Hotel.</p>
+        <div style="text-align: center; margin: 50px 0;">
+            <i class="fas fa-check-circle" style="color: #28a745; font-size: 4rem;"></i>
+            <h1 style="margin-top: 20px;">Booking Confirmed!</h1>
+            <p style="font-size: 1.2rem;">Thank you for your reservation. Your booking has been confirmed.</p>
+            
+            <div class="alert alert-info" style="margin-top: 20px; text-align: left; max-width: 600px; margin-left: auto; margin-right: auto;">
+                <p><i class="fas fa-envelope"></i> A confirmation email has been sent to your registered email address.</p>
+                <p>If you don't receive it within a few minutes, please check your spam folder.</p>
+            </div>
         </div>
         
         <div class="card" style="margin-top: 30px;">
