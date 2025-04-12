@@ -46,7 +46,7 @@ A comprehensive hotel booking system built with PHP that allows users to search 
 
 ### Local Development Setup
 1. Clone the repository:
-git clone https://github.com/yourusername/hotel-booking-system.git
+git clone https://github.com/CS5281-Team2/hotel-booking-system
 
 2. Move the project to your web server's document root (e.g., htdocs folder for XAMPP)
 
@@ -60,6 +60,12 @@ http://localhost/hotel-booking-system/
 1. Upload all files to your web hosting provider
 2. Ensure the `data` directory has proper write permissions
 3. Access your website through the provided domain name
+
+### Online Deployment
+1. Upload all files to your web hosting provider
+2. Ensure the `htdocs` directory has proper write permissions
+3. Access the live deployment at:
+http://www.cs5281group2.free.nf/
 
 ## Project Structure
 ```
