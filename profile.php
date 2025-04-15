@@ -19,9 +19,9 @@ if (!$user) {
     exit;
 }
 
-$name = $user[1];
-$email = $user[2];
-$mobile = $user[3];
+$name = $user['name'];
+$email = $user['email'];
+$mobile = $user['phone'];
 $membershipNumber = 'LH' . str_pad(rand(1000, 9999), 6, '0', STR_PAD_LEFT);
 
 // 处理表单提交
@@ -113,7 +113,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile'])) {
                                     </h3>
                                     <p style="margin-bottom: 10px;"><strong>Membership Number:</strong> <span style="font-family: monospace; font-size: 1.1em;"><?php echo $membershipNumber; ?></span></p>
                                     <p style="margin-bottom: 10px;"><strong>Membership Status:</strong> <span style="color: #28a745; font-weight: bold; background-color: rgba(40, 167, 69, 0.1); padding: 3px 8px; border-radius: 4px;">Active</span></p>
-                                    <p><strong>Join Date:</strong> <?php echo date('F j, Y', strtotime($user[6])); ?></p>
+                                    <p><strong>Join Date:</strong> <?php echo date('F j, Y', strtotime($user['created_at'])); ?></p>
                                 </div>
                             </div>
                         </div>

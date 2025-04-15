@@ -175,6 +175,12 @@ foreach ($allBookings as $key => $booking) {
                                         <span style="background-color: #28a745; color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.8rem;">Confirmed</span>
                                     <?php elseif ($booking['status'] == 'cancelled'): ?>
                                         <span style="background-color: #dc3545; color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.8rem;">Cancelled</span>
+                                    <?php elseif ($booking['status'] == 'completed'): ?>
+                                        <span style="background-color: #6c757d; color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.8rem;">Completed</span>
+                                    <?php elseif ($booking['status'] == 'active'): ?>
+                                        <span style="background-color: #007bff; color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.8rem;">Active</span>
+                                    <?php else: ?>
+                                        <span style="background-color: #6c757d; color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.8rem;"><?php echo ucfirst($booking['status']); ?></span>
                                     <?php endif; ?>
                                 </td>
                                 <td style="padding: 12px 15px; text-align: center;" class="action-cell">
