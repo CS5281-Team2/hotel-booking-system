@@ -183,13 +183,33 @@ function getBookings() {
     $content = file_get_contents(BOOKINGS_FILE);
     $bookings = $content ? explode("\n", $content) : [];
     $bookingsData = [];
+    $processedIds = []; // 添加ID跟踪数组
     
     foreach ($bookings as $booking) {
         if (empty($booking)) continue;
         $bookingData = explode('|', $booking);
         if (count($bookingData) >= 8) {
+            // 确保ID被视为字符串处理
+            $bookingId = strval($bookingData[0]);
+            
+            // 使用严格的字符串比较
+            $idExists = false;
+            foreach ($processedIds as $existingId) {
+                if (strcmp($existingId, $bookingId) === 0) {
+                    $idExists = true;
+                    break;
+                }
+            }
+            
+            if ($idExists) {
+                continue; // 跳过已经处理过的ID
+            }
+            
+            // 记录此ID已处理
+            $processedIds[] = $bookingId;
+            
             $bookingInfo = [
-                'id' => $bookingData[0],
+                'id' => $bookingId,
                 'user_id' => $bookingData[1],
                 'room_id' => $bookingData[2],
                 'check_in' => $bookingData[3],
@@ -332,6 +352,65 @@ function isRoomAvailable($roomId, $checkIn, $checkOut) {
  */
 function generateId() {
     return uniqid();
+}
+
+/**
+ * 清理预订数据文件中的重复记录
+ */
+function cleanupDuplicateBookings() {
+    // 读取原始数据并逐行解析
+    $content = file_get_contents(BOOKINGS_FILE);
+    $bookingLines = $content ? explode("\n", $content) : [];
+    $uniqueBookingLines = [];
+    $processedIds = [];
+    $hasChanges = false;
+    
+    foreach ($bookingLines as $bookingLine) {
+        if (empty($bookingLine)) continue;
+        
+        $bookingData = explode('|', $bookingLine);
+        if (count($bookingData) < 8) continue;
+        
+        // 确保ID为字符串
+        $bookingId = strval($bookingData[0]);
+        
+        // 使用严格的字符串比较
+        $idExists = false;
+        foreach ($processedIds as $existingId) {
+            if (strcmp($existingId, $bookingId) === 0) {
+                $idExists = true;
+                $hasChanges = true; // 发现重复项
+                break;
+            }
+        }
+        
+        // 只有未处理过的ID才添加到结果中
+        if (!$idExists) {
+            $processedIds[] = $bookingId;
+            $uniqueBookingLines[] = $bookingLine;
+        }
+    }
+    
+    // 如果没有变化，就不需要写入文件
+    if (!$hasChanges) {
+        return true;
+    }
+    
+    // 确认文件可写
+    if (!is_writable(BOOKINGS_FILE)) {
+        error_log('预订数据文件不可写');
+        return false;
+    }
+    
+    // 写入唯一记录
+    $result = file_put_contents(BOOKINGS_FILE, implode("\n", array_filter($uniqueBookingLines)));
+    
+    if ($result === false) {
+        error_log('清理重复预订失败');
+        return false;
+    }
+    
+    return true;
 }
 
 /**

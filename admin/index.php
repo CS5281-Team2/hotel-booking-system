@@ -11,16 +11,30 @@ if (!isAdmin()) {
     exit;
 }
 
+// 自动清理预订数据文件中的重复记录
+cleanupDuplicateBookings();
+
 // 获取所有预订
 $allBookings = getBookings();
 
 // 获取今天的预订（入住和退房）
-// 为了测试，固定今天的日期为2025-04-12
-$todayDate = '2025-04-12'; // 固定日期用于测试
+// 使用当前日期替代固定日期
+$todayDate = date('Y-m-d'); // 使用当前日期
 $todayCheckIns = [];
 $todayCheckOuts = [];
 
+// 用于检查重复预订的数组
+$processedBookingIds = [];
+
 foreach ($allBookings as $booking) {
+    // 检查是否已经处理过此预订，防止重复
+    if (in_array($booking['id'], $processedBookingIds)) {
+        continue;
+    }
+    
+    // 将预订ID添加到已处理数组中
+    $processedBookingIds[] = $booking['id'];
+    
     if ($booking['check_in'] == $todayDate && $booking['status'] != 'cancelled') {
         $room = getRoomById($booking['room_id']);
         $user = getUserById($booking['user_id']);

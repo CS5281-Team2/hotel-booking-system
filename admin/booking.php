@@ -11,8 +11,25 @@ if (!isAdmin()) {
     exit;
 }
 
+// 自动清理预订数据文件中的重复记录
+cleanupDuplicateBookings();
+
 // 获取所有预订
 $allBookings = getBookings();
+
+// 过滤掉重复的预订
+$uniqueBookings = [];
+$processedIds = [];
+
+foreach ($allBookings as $booking) {
+    if (!in_array($booking['id'], $processedIds)) {
+        $processedIds[] = $booking['id'];
+        $uniqueBookings[] = $booking;
+    }
+}
+
+// 使用过滤后的唯一预订
+$allBookings = $uniqueBookings;
 
 // 按日期降序排序（最新的在前）
 usort($allBookings, function($a, $b) {
@@ -49,9 +66,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['cancel_booking'])) {
 }
 
 // 添加房间和用户信息到预订
-foreach ($allBookings as &$booking) {
-    $booking['room'] = getRoomById($booking['room_id']);
-    $booking['user'] = getUserById($booking['user_id']);
+foreach ($allBookings as $key => $booking) {
+    $allBookings[$key]['room'] = getRoomById($booking['room_id']);
+    $allBookings[$key]['user'] = getUserById($booking['user_id']);
 }
 ?>
 
@@ -92,12 +109,17 @@ foreach ($allBookings as &$booking) {
                 <tbody>
                     <?php if (empty($allBookings)): ?>
                         <tr>
-                            <td colspan="10" style="padding: 20px; text-align: center;">No bookings found</td>
+                            <td colspan="11" style="padding: 20px; text-align: center;">No bookings found</td>
                         </tr>
                     <?php else: ?>
-                        <?php foreach ($allBookings as $booking): ?>
+                        <?php 
+                        // 重写表格渲染逻辑
+                        $rowIndex = 1;
+                        foreach ($allBookings as $booking): 
+                        ?>
                             <tr style="border-bottom: 1px solid #ddd;" class="booking-row" data-booking-id="<?php echo $booking['id']; ?>">
-                                <td style="padding: 12px 15px;"><?php echo substr($booking['id'], -8); ?></td>
+                                <td style="padding: 12px 15px; font-weight: bold;"><?php echo $rowIndex++; ?></td>
+                                <td style="padding: 12px 15px; font-weight: bold;"><?php echo $booking['id']; ?></td>
                                 <td style="padding: 12px 15px;">
                                     <?php 
                                         if (isset($booking['user']) && is_array($booking['user']) && isset($booking['user'][1])) {
