@@ -169,7 +169,7 @@ $totalRevenue = array_sum(array_column($activeBookings, 'total_price'));
         </div>
 
         <div style="text-align: center; margin-top: 30px;">
-            <a href="bookings.php" class="btn btn-primary">View All Bookings</a>
+            <a href="booking.php" class="btn btn-primary">View All Bookings</a>
         </div>
     </div>
 </section>
