@@ -45,20 +45,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['cancel_booking'])) {
     $booking = getBookingById($bookingId);
     
     if ($booking) {
-        // 检查是否是入住当天
-        $checkInDate = new DateTime($booking['check_in']);
-        $today = new DateTime();
-        $today->setTime(0, 0, 0);
-        
-        // 如果今天已经是入住日期，不允许取消
-        if ($checkInDate->format('Y-m-d') == $today->format('Y-m-d')) {
-            $errorMessage = 'Cancellation is not permitted on the check-in day. Please contact the guest directly.';
+        // 移除入住当天不能取消的限制
+        if (updateBookingStatus($bookingId, 'cancelled')) {
+            $successMessage = 'The booking has been cancelled successfully. A confirmation email has been sent to the guest.';
         } else {
-            if (updateBookingStatus($bookingId, 'cancelled')) {
-                $successMessage = 'The booking has been cancelled successfully. A confirmation email has been sent to the guest.';
-            } else {
-                $errorMessage = 'Failed to cancel booking. Please try again later or contact system administrator.';
-            }
+            $errorMessage = 'Failed to cancel booking. Please try again later or contact system administrator.';
         }
     } else {
         $errorMessage = 'Booking not found. Please refresh the page and try again.';

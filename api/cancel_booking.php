@@ -35,19 +35,12 @@ if (!isAdmin() && $booking['user_id'] != $_SESSION['user_id']) {
     exit;
 }
 
-// 检查取消限制
-$checkInDate = new DateTime($booking['check_in']);
-$now = new DateTime();
-
-// 管理员不能在入住当天取消
-if (isAdmin() && $checkInDate->format('Y-m-d') == $now->format('Y-m-d')) {
-    ob_clean();
-    echo json_encode(['success' => false, 'message' => 'Cancellation is not permitted on the check-in day. Please contact the guest directly.']);
-    exit;
-}
-
-// 用户不能在入住前24小时内取消
+// 管理员可以随时取消预订，无需检查时间限制
+// 仅对普通用户检查取消限制
 if (!isAdmin()) {
+    $checkInDate = new DateTime($booking['check_in']);
+    $now = new DateTime();
+    
     $interval = $now->diff($checkInDate);
     $hoursUntilCheckIn = $interval->days * 24 + $interval->h;
     
@@ -56,13 +49,13 @@ if (!isAdmin()) {
         echo json_encode(['success' => false, 'message' => 'Cancellation is not permitted within 24 hours of check-in. Please contact our hotel directly for assistance.']);
         exit;
     }
-}
-
-// 不能取消已经过了入住日期的预订
-if ($checkInDate < $now) {
-    ob_clean();
-    echo json_encode(['success' => false, 'message' => 'Cannot cancel a booking after the check-in date has passed. Please contact our hotel directly if you need assistance.']);
-    exit;
+    
+    // 不能取消已经过了入住日期的预订
+    if ($checkInDate < $now) {
+        ob_clean();
+        echo json_encode(['success' => false, 'message' => 'Cannot cancel a booking after the check-in date has passed. Please contact our hotel directly if you need assistance.']);
+        exit;
+    }
 }
 
 // 更新预订状态
