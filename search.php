@@ -162,7 +162,7 @@ if ($validDates) {
                                 <p><strong>Total:</strong> $<?php echo number_format($room['total_price'], 2); ?> for
                                     <?php echo $nights; ?> night<?php echo $nights > 1 ? 's' : ''; ?></p>
                             </div>
-                            <a href="booking.php?room_id=<?php echo $room['id']; ?>&check_in=<?php echo urlencode($checkIn); ?>&check_out=<?php echo urlencode($checkOut); ?>&guests=<?php echo $guests; ?>"
+                            <a href="room.php?id=<?php echo $room['id']; ?>&check_in=<?php echo urlencode($checkIn); ?>&check_out=<?php echo urlencode($checkOut); ?>&guests=<?php echo $guests; ?>"
                                 class="btn btn-primary">Book Now</a>
                         </div>
                     </div>
@@ -302,7 +302,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                     <p style="font-size: 1.2rem;"><strong>$${room.price}</strong> per night</p>
                                     <p><strong>Total:</strong> $${room.total_price} for ${data.nights} night${data.nights > 1 ? 's' : ''}</p>
                                 </div>
-                                <a href="booking.php?room_id=${room.id}&check_in=${data.check_in}&check_out=${data.check_out}&guests=${data.guests}" class="btn btn-primary">Book Now</a>
+                                <a href="room.php?id=${room.id}&check_in=${data.check_in}&check_out=${data.check_out}&guests=${data.guests}" class="btn btn-primary">Book Now</a>
                             </div>
                         </div>
                     </div>

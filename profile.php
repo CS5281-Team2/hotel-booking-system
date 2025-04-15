@@ -32,13 +32,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile'])) {
     $newName = isset($_POST['name']) ? trim($_POST['name']) : '';
     $newMobile = isset($_POST['mobile']) ? trim($_POST['mobile']) : '';
     
-    // 验证数据
+    $nameRegex = '/^[a-zA-Z\s]+$/'; // 只允许字母和空格
+    $phoneRegex = '/^1[3-9]\d{9}$|^[569]\d{7}$|^[6]\d{7}$/'; // 支持内地(11位)/香港(8位,5/6/9开头)/澳门(8位,6开头)
+
     if (empty($newName)) {
         $updateError = 'Please enter your name';
+    } elseif (!preg_match($nameRegex, $newName)) {
+        $updateError = 'Name can only contain letters and spaces.';
     } elseif (empty($newMobile)) {
         $updateError = 'Please enter your mobile number';
-    } elseif (!preg_match('/^1[3-9]\d{9}$/', $newMobile) && !preg_match('/^[5-9]\d{7}$/', $newMobile)) {
-        $updateError = 'Please enter a valid phone number (China mainland: 11 digits starting with 1, Hong Kong: 8 digits starting with 5-9)';
+    } elseif (!preg_match($phoneRegex, $newMobile)) {
+        $updateError = 'Please enter a valid 11-digit Mainland China, 8-digit Hong Kong, or 8-digit Macau phone number.';
     } else {
         // 更新用户信息
         $result = updateUserProfile($userId, $newName, $newMobile);
@@ -192,8 +196,30 @@ document.addEventListener('DOMContentLoaded', function() {
     const profileForm = document.getElementById('profile-form');
     const nameInput = document.getElementById('name');
     const mobileInput = document.getElementById('mobile');
+    const statusMessage = document.getElementById('update-status-message');
     const displayName = document.getElementById('display-name');
     const displayMobile = document.getElementById('display-mobile');
+    let errorMessage = '';
+    
+    const nameRegex = /^[a-zA-Z\s]+$/;
+    const phoneRegex = /^1[3-9]\d{9}$|^[569]\d{7}$|^[6]\d{7}$/; // 支持内地/香港/澳门
+
+    if (nameInput.value.trim() === '') {
+        errorMessage = 'Please enter your name';
+    }
+    else if (!nameRegex.test(nameInput.value.trim())) {
+        errorMessage = 'Name can only contain letters and spaces.';
+    }
+    else if (mobileInput.value.trim() === '') {
+        errorMessage = 'Please enter your mobile number';
+    }
+    else if (!phoneRegex.test(mobileInput.value.trim())) {
+        errorMessage = 'Please enter a valid 11-digit Mainland China, 8-digit Hong Kong, or 8-digit Macau phone number.';
+    }
+
+    if (errorMessage) {
+        statusMessage.innerHTML = `<div class="alert alert-error">${errorMessage}</div>`;
+    }
     
     // 切换到编辑模式
     editButton.addEventListener('click', function() {

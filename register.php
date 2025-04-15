@@ -23,17 +23,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $password = isset($_POST['password']) ? $_POST['password'] : '';
     $confirmPassword = isset($_POST['confirm_password']) ? $_POST['confirm_password'] : '';
     
-    // 验证数据
-    if (empty($name)) {
-        $errorMessage = 'Please enter your name';
+    $nameRegex = '/^[a-zA-Z\s]+$/'; // 只允许字母和空格
+    $phoneRegex = '/^1[3-9]\d{9}$|^[569]\d{7}$|^[6]\d{7}$/'; // 支持内地(11位)/香港(8位,5/6/9开头)/澳门(8位,6开头)
+
+    if (empty($name) || empty($email) || empty($mobile) || empty($password) || empty($confirmPassword)) {
+        $errorMessage = 'All fields are required';
+    } elseif (!preg_match($nameRegex, $name)) {
+        $errorMessage = 'Name can only contain letters and spaces.';
+    } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        $errorMessage = 'Invalid email format';
     } elseif (empty($mobile)) {
         $errorMessage = 'Please enter your mobile number';
-    } elseif (!preg_match('/^1[3-9]\d{9}$/', $mobile) && !preg_match('/^[5-9]\d{7}$/', $mobile)) {
-        $errorMessage = 'Please enter a valid phone number (China mainland: 11 digits starting with 1, Hong Kong: 8 digits starting with 5-9)';
-    } elseif (empty($email) || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
-        $errorMessage = 'Please enter a valid email address';
-    } elseif (empty($password) || strlen($password) < 6) {
-        $errorMessage = 'Password must be at least 6 characters long';
+    } elseif (!preg_match($phoneRegex, $mobile)) {
+        $errorMessage = 'Please enter a valid 11-digit Mainland China, 8-digit Hong Kong, or 8-digit Macau phone number.';
     } elseif ($password !== $confirmPassword) {
         $errorMessage = 'Passwords do not match';
     } else {
@@ -118,62 +120,47 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const registerForm = document.getElementById('register-form');
+    const nameInput = document.getElementById('name');
+    const mobile = document.getElementById('mobile').value.trim();
+    const emailInput = document.getElementById('email');
+    const passwordInput = document.getElementById('password');
+    const confirmPasswordInput = document.getElementById('confirm_password');
+    const statusMessage = document.getElementById('status-message');
     
-    if (registerForm) {
-        registerForm.addEventListener('submit', function(event) {
-            let hasError = false;
-            let errorMessage = '';
-            
-            // 获取表单字段值
-            const name = document.getElementById('name').value.trim();
-            const mobile = document.getElementById('mobile').value.trim();
-            const email = document.getElementById('email').value.trim();
-            const password = document.getElementById('password').value;
-            const confirmPassword = document.getElementById('confirm_password').value;
-            
-            // 验证姓名
-            if (name === '') {
-                errorMessage = 'Please enter your name';
-                hasError = true;
-            }
-            // 验证手机号
-            else if (mobile === '') {
-                errorMessage = 'Please enter your mobile number';
-                hasError = true;
-            }
-            // 验证手机号格式 - 中国大陆或香港
-            else if (!(/^1[3-9]\d{9}$/.test(mobile) || /^[5-9]\d{7}$/.test(mobile))) {
-                errorMessage = 'Please enter a valid phone number (China mainland: 11 digits starting with 1, Hong Kong: 8 digits starting with 5-9)';
-                hasError = true;
-            }
-            // 验证邮箱
-            else if (email === '') {
-                errorMessage = 'Please enter your email address';
-                hasError = true;
-            }
-            // 验证邮箱格式
-            else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-                errorMessage = 'Please enter a valid email address';
-                hasError = true;
-            }
-            // 验证密码长度
-            else if (password.length < 6) {
-                errorMessage = 'Password must be at least 6 characters long';
-                hasError = true;
-            }
-            // 验证密码匹配
-            else if (password !== confirmPassword) {
-                errorMessage = 'Passwords do not match';
-                hasError = true;
-            }
-            
-            // 如果有错误，阻止表单提交并显示错误
-            if (hasError) {
-                event.preventDefault();
-                alert(errorMessage);
-            }
-        });
-    }
+    registerForm.addEventListener('submit', function(event) {
+        event.preventDefault();
+        statusMessage.innerHTML = '';
+        
+        const name = nameInput.value.trim();
+        const email = emailInput.value.trim();
+        const mobile = mobile.value.trim();
+        const password = passwordInput.value.trim();
+        const confirmPassword = confirmPasswordInput.value.trim();
+        let errorMessage = '';
+        
+        const nameRegex = /^[a-zA-Z\s]+$/;
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        const phoneRegex = /^1[3-9]\d{9}$|^[569]\d{7}$|^[6]\d{7}$/; // 支持内地/香港/澳门
+        
+        if (name === '' || email === '' || mobile === '' || password === '' || confirmPassword === '') {
+            errorMessage = 'All fields are required';
+        } else if (!nameRegex.test(name)) {
+            errorMessage = 'Name can only contain letters and spaces.';
+        } else if (!emailRegex.test(email)) {
+            errorMessage = 'Invalid email format';
+        } else if (mobile === '') {
+            errorMessage = 'Please enter your mobile number';
+        } else if (!phoneRegex.test(mobile)) {
+            errorMessage = 'Please enter a valid 11-digit Mainland China, 8-digit Hong Kong, or 8-digit Macau phone number.';
+        } else if (password !== confirmPassword) {
+            errorMessage = 'Passwords do not match';
+        }
+        
+        if (errorMessage) {
+            event.preventDefault();
+            statusMessage.innerHTML = errorMessage;
+        }
+    });
 });
 </script>
 

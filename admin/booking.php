@@ -109,21 +109,29 @@ foreach ($allBookings as $key => $booking) {
                 <tbody>
                     <?php if (empty($allBookings)): ?>
                         <tr>
-                            <td colspan="11" style="padding: 20px; text-align: center;">No bookings found</td>
+                            <td colspan="10" style="padding: 20px; text-align: center;">No bookings found</td>
                         </tr>
                     <?php else: ?>
                         <?php 
-                        // 重写表格渲染逻辑
-                        $rowIndex = 1;
+                        // 移除 rowIndex，因为第一列应该是 Booking ID
+                        // $rowIndex = 1;
                         foreach ($allBookings as $booking): 
                         ?>
                             <tr style="border-bottom: 1px solid #ddd;" class="booking-row" data-booking-id="<?php echo $booking['id']; ?>">
-                                <td style="padding: 12px 15px; font-weight: bold;"><?php echo $rowIndex++; ?></td>
-                                <td style="padding: 12px 15px; font-weight: bold;"><?php echo $booking['id']; ?></td>
+                                <td style="padding: 12px 15px;"><?php echo substr($booking['id'], -8); ?></td>
                                 <td style="padding: 12px 15px;">
                                     <?php 
-                                        if (isset($booking['user']) && is_array($booking['user']) && isset($booking['user'][1])) {
-                                            echo $booking['user'][1];
+                                        if (isset($booking['user']) && is_array($booking['user'])) {
+                                            // 检查用户数据是否是关联数组
+                                            if (isset($booking['user']['name'])) {
+                                                // 新格式：关联数组
+                                                echo $booking['user']['name'];
+                                            } elseif (isset($booking['user'][1])) {
+                                                // 旧格式：索引数组
+                                                echo $booking['user'][1];
+                                            } else {
+                                                echo 'Guest Info Not Available';
+                                            }
                                         } else {
                                             echo 'Guest Info Not Available';
                                         }
@@ -133,8 +141,17 @@ foreach ($allBookings as $key => $booking) {
                                     <?php 
                                         if (isset($booking['mobile_phone']) && !empty($booking['mobile_phone'])) {
                                             echo $booking['mobile_phone'];
-                                        } elseif (isset($booking['user']) && is_array($booking['user']) && isset($booking['user'][3])) {
-                                            echo $booking['user'][3]; // 使用用户注册的手机号
+                                        } elseif (isset($booking['user']) && is_array($booking['user'])) {
+                                            // 检查用户数据是否是关联数组
+                                            if (isset($booking['user']['phone'])) {
+                                                // 新格式：关联数组
+                                                echo $booking['user']['phone'];
+                                            } elseif (isset($booking['user'][3])) {
+                                                // 旧格式：索引数组
+                                                echo $booking['user'][3];
+                                            } else {
+                                                echo 'Contact Not Available';
+                                            }
                                         } else {
                                             echo 'Contact Not Available';
                                         }

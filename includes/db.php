@@ -44,38 +44,75 @@ if (!file_exists(BOOKINGS_FILE)) {
  * 获取所有用户数据
  */
 function getUsers() {
+    $usersData = [];
+    $expectedFieldCount = 7; // 用户文件应有 7 个字段
+
     if (!file_exists(USERS_FILE) || !is_readable(USERS_FILE)) {
-        error_log('用户数据文件不存在或不可读');
+        error_log('User data file does not exist or is not readable.');
         return [];
     }
-    
-    $content = file_get_contents(USERS_FILE);
-    if ($content === false) {
-        error_log('读取用户数据文件失败');
-        return [];
+
+    $lines = file(USERS_FILE, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+
+    foreach ($lines as $line) {
+        $userData = explode('|', $line);
+        if (count($userData) === $expectedFieldCount) {
+            $usersData[] = [
+                'id' => $userData[0],
+                'name' => $userData[1],
+                'email' => $userData[2],
+                'phone' => $userData[3],
+                'password_hash' => $userData[4],
+                'role' => $userData[5],
+                'created_at' => $userData[6]
+            ];
+        } else {
+             error_log("Skipping malformed user line (expected {$expectedFieldCount} fields, found " . count($userData) . "): " . $line);
+        }
     }
-    
-    $users = $content ? explode("\n", $content) : [];
-    return array_filter($users); // 移除空行
+    return $usersData;
 }
 
 /**
  * 添加新用户
  */
 function addUser($userData) {
-    if (!is_writable(USERS_FILE)) {
-        error_log('用户数据文件不可写');
+    // 强制按固定顺序排列字段
+    $orderedData = [
+        isset($userData['id']) ? $userData['id'] : '',
+        isset($userData['name']) ? $userData['name'] : '',
+        isset($userData['email']) ? $userData['email'] : '',
+        isset($userData['phone']) ? $userData['phone'] : '',
+        isset($userData['password_hash']) ? $userData['password_hash'] : '',
+        isset($userData['role']) ? $userData['role'] : 'user', // 默认角色
+        isset($userData['created_at']) ? $userData['created_at'] : date('Y-m-d H:i:s') // 默认创建时间
+    ];
+
+    // 检查字段数量是否正确
+    if (count($orderedData) !== 7) {
+         error_log("Incorrect number of fields provided to addUser.");
+         return false;
+    }
+
+    $userString = implode('|', $orderedData);
+
+    // 使用文件锁确保写入安全
+    $fp = fopen(USERS_FILE, 'a');
+    if (!$fp) {
+        error_log("Failed to open users file for appending.");
         return false;
     }
-    
-    $userString = implode('|', $userData);
-    $result = file_put_contents(USERS_FILE, $userString . "\n", FILE_APPEND);
-    
-    if ($result === false) {
-        error_log('写入用户数据失败');
+    if (flock($fp, LOCK_EX)) {
+        fwrite($fp, $userString . "\n");
+        fflush($fp);
+        flock($fp, LOCK_UN);
+    } else {
+        fclose($fp);
+        error_log("Could not lock users file for writing.");
         return false;
     }
-    
+    fclose($fp);
+
     return true;
 }
 
@@ -83,11 +120,13 @@ function addUser($userData) {
  * 通过ID获取用户
  */
 function getUserById($userId) {
-    $users = getUsers();
+    $users = getUsers(); // 现在返回结构化数组
     foreach ($users as $user) {
-        $userData = explode('|', $user);
-        if (isset($userData[0]) && $userData[0] == $userId) {
-            return $userData;
+        // 直接比较结构化数据中的 id 字段
+        if ($user['id'] == $userId) {
+            // 注意：这里返回的是关联数组，不是原始的 explode 数组
+            // 如果其他地方期望的是索引数组，需要调整
+            return $user; 
         }
     }
     return null;
@@ -97,11 +136,12 @@ function getUserById($userId) {
  * 通过邮箱获取用户
  */
 function getUserByEmail($email) {
-    $users = getUsers();
+    $users = getUsers(); // 现在返回结构化数组
     foreach ($users as $user) {
-        $userData = explode('|', $user);
-        if (isset($userData[2]) && $userData[2] == $email) {
-            return $userData;
+         // 直接比较结构化数据中的 email 字段
+        if ($user['email'] == $email) {
+             // 注意：这里返回的是关联数组
+            return $user;
         }
     }
     return null;
@@ -154,25 +194,68 @@ function getRoomById($roomId) {
  */
 function initRooms() {
     if (filesize(ROOMS_FILE) > 0) return;
-    
+
     $rooms = [
+        // 确保字段顺序: id|type|price|breakfast|capacity|description|image|quantity|status
         ['1', 'Deluxe Room', '199.99', 'Yes', '2', 'Spacious room with king-size bed, city view and premium bedding.', 'deluxe.jpg', '5', 'available'],
         ['2', 'Executive Suite', '299.99', 'Yes', '2', 'Luxurious suite with separate living area and premium amenities.', 'executive.jpg', '3', 'available'],
         ['3', 'Family Room', '249.99', 'Yes', '4', 'Perfect for families with two queen beds and extra space.', 'family.jpg', '4', 'available'],
         ['4', 'Standard Room', '149.99', 'No', '2', 'Comfortable room with all essential amenities.', 'standard.jpg', '8', 'available']
     ];
-    
-    foreach ($rooms as $room) {
-        file_put_contents(ROOMS_FILE, implode('|', $room) . "\n", FILE_APPEND);
+
+    $fp = fopen(ROOMS_FILE, 'a');
+    if (!$fp) {
+        error_log("Failed to open rooms file for initialization.");
+        return;
     }
+    if (flock($fp, LOCK_EX)) {
+        foreach ($rooms as $room) {
+            if (count($room) === 9) { // 校验字段数
+               fwrite($fp, implode('|', $room) . "\n");
+            }
+        }
+        fflush($fp);
+        flock($fp, LOCK_UN);
+    } else {
+         error_log("Could not lock rooms file for initialization.");
+    }
+    fclose($fp);
 }
 
 /**
  * 添加新预订
  */
 function addBooking($bookingData) {
-    $bookingString = implode('|', $bookingData);
-    file_put_contents(BOOKINGS_FILE, $bookingString . "\n", FILE_APPEND);
+    // 强制按固定顺序排列字段
+    $orderedData = [
+        isset($bookingData['id']) ? $bookingData['id'] : '',
+        isset($bookingData['user_id']) ? $bookingData['user_id'] : '',
+        isset($bookingData['room_id']) ? $bookingData['room_id'] : '',
+        isset($bookingData['check_in']) ? $bookingData['check_in'] : '',
+        isset($bookingData['check_out']) ? $bookingData['check_out'] : '',
+        isset($bookingData['guests']) ? $bookingData['guests'] : '',
+        isset($bookingData['total_price']) ? $bookingData['total_price'] : '',
+        isset($bookingData['status']) ? $bookingData['status'] : 'confirmed', // 确保有默认值
+        isset($bookingData['created_at']) ? $bookingData['created_at'] : date('Y-m-d H:i:s'), // 确保有默认值
+        isset($bookingData['mobile_phone']) ? $bookingData['mobile_phone'] : '', // 手机号
+        isset($bookingData['special_requests']) ? $bookingData['special_requests'] : '' // 特殊要求
+    ];
+    
+    $bookingString = implode('|', $orderedData);
+    
+    // 使用文件锁确保写入安全
+    $fp = fopen(BOOKINGS_FILE, 'a'); // 以追加模式打开
+    if (flock($fp, LOCK_EX)) { // 获取独占锁
+        fwrite($fp, $bookingString . "\n");
+        fflush($fp);            // 清空文件指针缓存
+        flock($fp, LOCK_UN);    // 释放锁
+    } else {
+        fclose($fp);
+        error_log("Could not lock bookings file for writing.");
+        return false; // 无法获取锁
+    }
+    fclose($fp);
+    
     return true;
 }
 
@@ -180,19 +263,25 @@ function addBooking($bookingData) {
  * 获取所有预订
  */
 function getBookings() {
-    $content = file_get_contents(BOOKINGS_FILE);
-    $bookings = $content ? explode("\n", $content) : [];
     $bookingsData = [];
-    $processedIds = []; // 添加ID跟踪数组
-    
-    foreach ($bookings as $booking) {
-        if (empty($booking)) continue;
-        $bookingData = explode('|', $booking);
-        if (count($bookingData) >= 8) {
-            // 确保ID被视为字符串处理
+    $processedIds = []; 
+    $expectedFieldCount = 11; // 更新期望的字段数量
+
+    if (!file_exists(BOOKINGS_FILE) || !is_readable(BOOKINGS_FILE)) {
+        error_log("Bookings file does not exist or is not readable.");
+        return [];
+    }
+
+    $lines = file(BOOKINGS_FILE, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+
+    foreach ($lines as $line) {
+        $bookingData = explode('|', $line);
+        
+        // 严格检查字段数量
+        if (count($bookingData) === $expectedFieldCount) {
             $bookingId = strval($bookingData[0]);
-            
-            // 使用严格的字符串比较
+
+            // 检查重复ID (保持原有逻辑)
             $idExists = false;
             foreach ($processedIds as $existingId) {
                 if (strcmp($existingId, $bookingId) === 0) {
@@ -200,14 +289,12 @@ function getBookings() {
                     break;
                 }
             }
-            
             if ($idExists) {
-                continue; // 跳过已经处理过的ID
+                continue; 
             }
-            
-            // 记录此ID已处理
             $processedIds[] = $bookingId;
             
+            // 按统一顺序解析字段
             $bookingInfo = [
                 'id' => $bookingId,
                 'user_id' => $bookingData[1],
@@ -216,19 +303,44 @@ function getBookings() {
                 'check_out' => $bookingData[4],
                 'guests' => $bookingData[5],
                 'total_price' => $bookingData[6],
-                'status' => $bookingData[7],
-                'created_at' => isset($bookingData[8]) ? $bookingData[8] : date('Y-m-d H:i:s')
+                'status' => $bookingData[7], // status 在索引 7
+                'created_at' => $bookingData[8], // created_at 在索引 8
+                'mobile_phone' => $bookingData[9], // mobile_phone 在索引 9
+                'special_requests' => $bookingData[10] // special_requests 在索引 10
             ];
             
-            // 添加手机号码字段支持
-            if (isset($bookingData[9])) {
-                $bookingInfo['mobile_phone'] = $bookingData[9];
-            }
-            
+            // 添加关联数据 (优化：减少重复调用)
+            // $bookingInfo['user'] = getUserById($bookingInfo['user_id']); 
+            // $bookingInfo['room'] = getRoomById($bookingInfo['room_id']);
+
             $bookingsData[] = $bookingInfo;
+        } else {
+             error_log("Skipping malformed booking line (expected {$expectedFieldCount} fields, found " . count($bookingData) . "): " . $line);
         }
     }
     
+    // 优化：在循环外批量获取用户信息和房间信息，减少文件读取次数
+    $userIds = array_unique(array_column($bookingsData, 'user_id'));
+    $roomIds = array_unique(array_column($bookingsData, 'room_id'));
+    $usersInfo = [];
+    $roomsInfo = [];
+
+    // 批量获取用户信息 (假设有 getUserByMultipleIds 函数, 否则需要循环调用 getUserById)
+    // 简化处理：仍然循环调用，但在 admin/booking.php 中完成关联可能更优
+    foreach ($userIds as $uid) {
+        $usersInfo[$uid] = getUserById($uid);
+    }
+     foreach ($roomIds as $rid) {
+        $roomsInfo[$rid] = getRoomById($rid);
+    }
+
+    // 将用户信息和房间信息合并回 bookingsData
+    foreach ($bookingsData as $key => $booking) {
+        $bookingsData[$key]['user'] = isset($usersInfo[$booking['user_id']]) ? $usersInfo[$booking['user_id']] : null;
+        $bookingsData[$key]['room'] = isset($roomsInfo[$booking['room_id']]) ? $roomsInfo[$booking['room_id']] : null;
+    }
+
+
     return $bookingsData;
 }
 
@@ -265,86 +377,117 @@ function getBookingById($bookingId) {
  * 更新预订状态
  */
 function updateBookingStatus($bookingId, $status) {
-    $bookings = getBookings();
+    $bookings = file(BOOKINGS_FILE, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
     $updatedBookings = [];
-    
-    foreach ($bookings as $booking) {
-        if ($booking['id'] == $bookingId) {
-            $booking['status'] = $status;
+    $updated = false;
+    $expectedFieldCount = 11; // 现在期望有11个字段
+
+    foreach ($bookings as $line) {
+        $bookingData = explode('|', $line);
+        // 检查ID是否匹配且行格式是否合规
+        if (count($bookingData) >= 8 && $bookingData[0] == $bookingId) {
+            // 更新状态字段（索引7）
+            $bookingData[7] = $status;
+            $updated = true;
+            
+            // 确保有11个字段（不足的补空字符串）
+            while (count($bookingData) < $expectedFieldCount) {
+                $bookingData[] = '';
+            }
+            
+            // 重新连接字段
+            $updatedBookings[] = implode('|', $bookingData);
+        } else {
+            // 保留原始行
+            $updatedBookings[] = $line;
         }
-        
-        $bookingStr = $booking['id'] . '|' . $booking['user_id'] . '|' . $booking['room_id'] . '|' . 
-                     $booking['check_in'] . '|' . $booking['check_out'] . '|' . $booking['guests'] . '|' . 
-                     $booking['total_price'] . '|' . $booking['status'] . '|' . $booking['created_at'];
-        
-        // 添加手机号码字段
-        if (isset($booking['mobile_phone'])) {
-            $bookingStr .= '|' . $booking['mobile_phone'];
-        }
-        
-        $updatedBookings[] = $bookingStr;
     }
     
-    if (!is_writable(BOOKINGS_FILE)) {
-        error_log('预订数据文件不可写');
+    if (!$updated) {
+        error_log("Booking ID {$bookingId} not found or already in desired status.");
         return false;
     }
     
-    $result = file_put_contents(BOOKINGS_FILE, implode("\n", array_filter($updatedBookings)));
-    
-    if ($result === false) {
-        error_log('更新预订状态失败');
+    // 使用文件锁安全地写入更新后的数据
+    $fp = fopen(BOOKINGS_FILE, 'w');
+    if (!$fp) {
+        error_log("Failed to open bookings file for status update.");
         return false;
     }
+    
+    if (flock($fp, LOCK_EX)) {
+        fwrite($fp, implode("\n", $updatedBookings) . "\n");
+        fflush($fp);
+        flock($fp, LOCK_UN);
+    } else {
+        fclose($fp);
+        error_log("Could not lock bookings file for status update.");
+        return false;
+    }
+    fclose($fp);
     
     return true;
 }
 
 /**
- * 检查房间在指定日期是否可用
+ * 检查房间在指定日期内是否可用（考虑房间数量）
  */
 function isRoomAvailable($roomId, $checkIn, $checkOut) {
     $room = getRoomById($roomId);
-    if (!$room) return false;
+    if (!$room || !isset($room['quantity']) || $room['quantity'] <= 0) {
+        // 如果房间信息不存在或数量无效，视为不可用
+        return false;
+    }
+    $roomQuantity = intval($room['quantity']);
     
-    $bookings = getBookings();
-    $totalRooms = $room['quantity'];
-    
-    // 将入住和退房日期转为日期对象
-    $checkInDate = new DateTime($checkIn);
-    $checkOutDate = new DateTime($checkOut);
-    
-    // 生成预订期间的所有日期
-    $dateRange = new DatePeriod(
-        $checkInDate,
-        new DateInterval('P1D'),
-        $checkOutDate
-    );
-    
-    // 检查每一天的房间可用情况
-    foreach ($dateRange as $date) {
-        $currentDate = $date->format('Y-m-d');
-        $bookedCount = 0;
-        
-        foreach ($bookings as $booking) {
-            if ($booking['room_id'] == $roomId && $booking['status'] != 'cancelled') {
-                $bookingCheckIn = new DateTime($booking['check_in']);
-                $bookingCheckOut = new DateTime($booking['check_out']);
+    $allBookings = getBookings();
+    $requestedCheckIn = new DateTime($checkIn);
+    // 预订日期范围不包括退房当天，所以结束日期需要减一天进行比较
+    $requestedCheckOut = (new DateTime($checkOut))->modify('-1 day'); 
+
+    // 创建一个日期范围内的每日预订计数器
+    $dailyBookedCount = [];
+    $currentDate = clone $requestedCheckIn;
+    while ($currentDate <= $requestedCheckOut) {
+        $dailyBookedCount[$currentDate->format('Y-m-d')] = 0;
+        $currentDate->modify('+1 day');
+    }
+
+    // 遍历所有已确认的预订
+    foreach ($allBookings as $booking) {
+        // 只关心相同房间ID且状态为confirmed的预订
+        if ($booking['room_id'] == $roomId && $booking['status'] == 'confirmed') {
+            $bookingCheckIn = new DateTime($booking['check_in']);
+            // 同样，已有预订的结束日期也减一天
+            $bookingCheckOut = (new DateTime($booking['check_out']))->modify('-1 day');
+
+            // 检查这个预订是否与请求的日期范围重叠
+            if ($requestedCheckOut >= $bookingCheckIn && $requestedCheckIn <= $bookingCheckOut) {
+                // 如果重叠，增加重叠日期范围内的每日计数
+                $overlapStart = max($requestedCheckIn, $bookingCheckIn);
+                $overlapEnd = min($requestedCheckOut, $bookingCheckOut);
                 
-                // 如果当前日期在预订范围内，增加已预订计数
-                if ($date >= $bookingCheckIn && $date < $bookingCheckOut) {
-                    $bookedCount++;
+                $currentOverlapDate = clone $overlapStart;
+                while ($currentOverlapDate <= $overlapEnd) {
+                    $dateStr = $currentOverlapDate->format('Y-m-d');
+                    if (isset($dailyBookedCount[$dateStr])) {
+                        $dailyBookedCount[$dateStr]++;
+                    }
+                    $currentOverlapDate->modify('+1 day');
                 }
             }
         }
-        
-        // 如果任何一天房间数量不足，则返回不可用
-        if ($bookedCount >= $totalRooms) {
-            return false;
+    }
+
+    // 检查每日预订数量是否超过房间总数
+    foreach ($dailyBookedCount as $date => $count) {
+        if ($count >= $roomQuantity) {
+            error_log("Room ID {$roomId} is unavailable on {$date}. Booked: {$count}, Quantity: {$roomQuantity}");
+            return false; // 某天预订已满
         }
     }
-    
-    return true;
+
+    return true; // 所有查询日期内都有空房
 }
 
 /**
@@ -417,129 +560,136 @@ function cleanupDuplicateBookings() {
  * 添加新房间
  */
 function addRoom($roomData) {
-    if (!is_writable(ROOMS_FILE)) {
-        error_log('房间数据文件不可写');
+    $expectedFieldCount = 9;
+    // 强制按固定顺序排列字段
+    $orderedData = [
+        isset($roomData['id']) ? $roomData['id'] : generateId(), // 自动生成ID?
+        isset($roomData['type']) ? $roomData['type'] : 'Unknown',
+        isset($roomData['price']) ? $roomData['price'] : '0.00',
+        isset($roomData['breakfast']) ? $roomData['breakfast'] : 'No',
+        isset($roomData['capacity']) ? $roomData['capacity'] : '1',
+        isset($roomData['description']) ? $roomData['description'] : '',
+        isset($roomData['image']) ? $roomData['image'] : 'default.jpg',
+        isset($roomData['quantity']) ? $roomData['quantity'] : '1',
+        isset($roomData['status']) ? $roomData['status'] : 'available'
+    ];
+
+    if (count($orderedData) !== $expectedFieldCount) {
+        error_log("Incorrect number of fields provided to addRoom.");
         return false;
     }
-    
-    $roomString = implode('|', [
-        $roomData['id'],
-        $roomData['type'],
-        $roomData['price'],
-        $roomData['breakfast'],
-        $roomData['capacity'],
-        $roomData['description'],
-        $roomData['image'],
-        $roomData['quantity']
-    ]);
-    
-    $result = file_put_contents(ROOMS_FILE, $roomString . "\n", FILE_APPEND);
-    
-    if ($result === false) {
-        error_log('添加房间数据失败');
+
+    $roomString = implode('|', $orderedData);
+
+    $fp = fopen(ROOMS_FILE, 'a');
+    if (!$fp) {
+        error_log("Failed to open rooms file for appending.");
         return false;
     }
-    
+    if (flock($fp, LOCK_EX)) {
+        fwrite($fp, $roomString . "\n");
+        fflush($fp);
+        flock($fp, LOCK_UN);
+    } else {
+        fclose($fp);
+        error_log("Could not lock rooms file for writing.");
+        return false;
+    }
+    fclose($fp);
+
     return true;
 }
 
 /**
- * 更新房间信息
+ * 更新房间数据
  */
-function updateRoom($roomId, $roomData) {
-    $rooms = getRooms();
-    $updatedRooms = [];
-    $found = false;
-    
-    foreach ($rooms as $room) {
-        if ($room['id'] == $roomId) {
-            $updatedRooms[] = implode('|', [
-                $roomId,
-                $roomData['type'],
-                $roomData['price'],
-                $roomData['breakfast'],
-                $roomData['capacity'],
-                $roomData['description'],
-                $roomData['image'],
-                $roomData['quantity'],
-                $roomData['status']
-            ]);
-            $found = true;
+function updateRoom($roomId, $updatedData) {
+    $rooms = file(ROOMS_FILE, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+    $newLines = [];
+    $updated = false;
+    $expectedFieldCount = 9;
+
+    foreach ($rooms as $line) {
+        $roomData = explode('|', $line);
+        if (count($roomData) === $expectedFieldCount && $roomData[0] == $roomId) {
+             // 应用更新，保持顺序
+             $orderedData = [
+                $roomId, // ID 不变
+                isset($updatedData['type']) ? $updatedData['type'] : $roomData[1],
+                isset($updatedData['price']) ? $updatedData['price'] : $roomData[2],
+                isset($updatedData['breakfast']) ? $updatedData['breakfast'] : $roomData[3],
+                isset($updatedData['capacity']) ? $updatedData['capacity'] : $roomData[4],
+                isset($updatedData['description']) ? $updatedData['description'] : $roomData[5],
+                isset($updatedData['image']) ? $updatedData['image'] : $roomData[6],
+                isset($updatedData['quantity']) ? $updatedData['quantity'] : $roomData[7],
+                isset($updatedData['status']) ? $updatedData['status'] : $roomData[8]
+             ];
+             $newLines[] = implode('|', $orderedData);
+             $updated = true;
         } else {
-            $updatedRooms[] = implode('|', [
-                $room['id'],
-                $room['type'],
-                $room['price'],
-                $room['breakfast'],
-                $room['capacity'],
-                $room['description'],
-                $room['image'],
-                $room['quantity'],
-                $room['status']
-            ]);
+            $newLines[] = $line; // 保留其他行
         }
     }
-    
-    // 如果是新增房间
-    if (!$found) {
-        $updatedRooms[] = implode('|', [
-            $roomId,
-            $roomData['type'],
-            $roomData['price'],
-            $roomData['breakfast'],
-            $roomData['capacity'],
-            $roomData['description'],
-            $roomData['image'],
-            $roomData['quantity'],
-            $roomData['status']
-        ]);
+
+    if ($updated) {
+        $fp = fopen(ROOMS_FILE, 'w');
+        if (!$fp) {
+            error_log("Failed to open rooms file for writing.");
+            return false;
+        }
+        if (flock($fp, LOCK_EX)) {
+            fwrite($fp, implode("\n", $newLines) . "\n");
+            fflush($fp);
+            flock($fp, LOCK_UN);
+        } else {
+             fclose($fp);
+             error_log("Could not lock rooms file for writing.");
+             return false;
+        }
+        fclose($fp);
+        return true;
     }
-    
-    if (!is_writable(ROOMS_FILE)) {
-        error_log('Room data file is not writable');
-        return false;
-    }
-    
-    $result = file_put_contents(ROOMS_FILE, implode("\n", $updatedRooms));
-    
-    if ($result === false) {
-        error_log('Failed to update room data');
-        return false;
-    }
-    
-    return true;
+    return false; // 未找到或未更新
 }
 
 /**
  * 删除房间
  */
 function deleteRoom($roomId) {
-    $rooms = getRooms();
-    $updatedRooms = [];
-    
-    foreach ($rooms as $room) {
-        if ($room['id'] != $roomId) {
-            $updatedRooms[] = implode('|', [
-                $room['id'],
-                $room['type'],
-                $room['price'],
-                $room['breakfast'],
-                $room['capacity'],
-                $room['description'],
-                $room['image'],
-                $room['quantity'],
-                $room['status']
-            ]);
+    $rooms = file(ROOMS_FILE, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+    $newLines = [];
+    $deleted = false;
+    $expectedFieldCount = 9;
+
+    foreach ($rooms as $line) {
+        $roomData = explode('|', $line);
+        // 仅保留 ID 不匹配的行
+        if (count($roomData) === $expectedFieldCount && $roomData[0] == $roomId) {
+            $deleted = true;
+            continue; // 跳过要删除的行
         }
+         $newLines[] = $line;
     }
-    
-    if (!is_writable(ROOMS_FILE)) {
-        error_log('房间数据文件不可写');
-        return false;
+
+    if ($deleted) {
+        $fp = fopen(ROOMS_FILE, 'w');
+         if (!$fp) {
+            error_log("Failed to open rooms file for writing.");
+            return false;
+        }
+        if (flock($fp, LOCK_EX)) {
+            fwrite($fp, implode("\n", $newLines) . "\n");
+            fflush($fp);
+            flock($fp, LOCK_UN);
+        } else {
+             fclose($fp);
+             error_log("Could not lock rooms file for writing.");
+             return false;
+        }
+        fclose($fp);
+        return true;
     }
-    
-    $result = file_put_contents(ROOMS_FILE, implode("\n", $updatedRooms));
-    return $result !== false;
+    return false; // 未找到或未删除
 }
 
 // 初始化房间数据

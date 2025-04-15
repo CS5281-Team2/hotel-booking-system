@@ -3,9 +3,14 @@ $pageTitle = 'Room Details';
 include 'includes/header.php';
 require_once 'includes/db.php';
 
-// 获取房间ID
+// 获取房间ID和查询参数
 $roomId = isset($_GET['id']) ? $_GET['id'] : '';
 $room = getRoomById($roomId);
+
+// 获取从搜索页传递过来的日期和客人数量
+$initialCheckIn = isset($_GET['check_in']) ? $_GET['check_in'] : date('Y-m-d');
+$initialCheckOut = isset($_GET['check_out']) ? $_GET['check_out'] : date('Y-m-d', strtotime('+1 day'));
+$initialGuests = isset($_GET['guests']) ? intval($_GET['guests']) : 1;
 
 // 如果房间不存在，重定向到搜索页
 if (!$room) {
@@ -52,26 +57,26 @@ if (!$room) {
                             <strong>$<?php echo $room['price']; ?></strong> <span style="font-size: 1rem;">per
                                 night</span></p>
 
-                        <form action="booking.php" method="GET" id="booking-form">
+                        <form action="booking-form.php" method="GET" id="booking-form">
                             <input type="hidden" name="room_id" value="<?php echo $room['id']; ?>">
 
                             <div class="form-group">
                                 <label for="check_in">Check-in Date</label>
                                 <input type="date" id="check_in" name="check_in" class="form-control" required
-                                    min="<?php echo date('Y-m-d'); ?>">
+                                    min="<?php echo date('Y-m-d'); ?>" value="<?php echo $initialCheckIn; ?>">
                             </div>
 
                             <div class="form-group">
                                 <label for="check_out">Check-out Date</label>
                                 <input type="date" id="check_out" name="check_out" class="form-control" required
-                                    min="<?php echo date('Y-m-d', strtotime('+1 day')); ?>">
+                                    min="<?php echo date('Y-m-d', strtotime('+1 day')); ?>" value="<?php echo $initialCheckOut; ?>">
                             </div>
 
                             <div class="form-group">
                                 <label for="guests">Number of Guests</label>
                                 <select id="guests" name="guests" class="form-control" required>
                                     <?php for ($i = 1; $i <= $room['capacity']; $i++): ?>
-                                    <option value="<?php echo $i; ?>"><?php echo $i; ?>
+                                    <option value="<?php echo $i; ?>" <?php echo ($i == $initialGuests) ? 'selected' : ''; ?>><?php echo $i; ?>
                                         Guest<?php echo $i > 1 ? 's' : ''; ?></option>
                                     <?php endfor; ?>
                                 </select>
@@ -91,14 +96,17 @@ document.addEventListener('DOMContentLoaded', function() {
     const bookingForm = document.getElementById('booking-form');
     const checkInInput = document.getElementById('check_in');
     const checkOutInput = document.getElementById('check_out');
+    const guestsSelect = document.getElementById('guests');
 
-    // 设置今天日期为入住日期的默认值
-    const today = new Date();
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-
-    checkInInput.valueAsDate = today;
-    checkOutInput.valueAsDate = tomorrow;
+    // 不需要JS设置默认值了，PHP已经设置
+    // const today = new Date();
+    // const tomorrow = new Date(today);
+    // tomorrow.setDate(tomorrow.getDate() + 1);
+    // checkInInput.valueAsDate = today;
+    // checkOutInput.valueAsDate = tomorrow;
+    
+    // 页面加载时触发一次change事件以确保退房日期的min值正确设置
+    checkInInput.dispatchEvent(new Event('change'));
 
     // 表单验证
     bookingForm.addEventListener('submit', function(event) {
