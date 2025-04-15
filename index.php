@@ -1,4 +1,5 @@
 <?php
+date_default_timezone_set('Asia/Shanghai');
 $pageTitle = 'Welcome';
 include 'includes/header.php';
 ?>
@@ -99,11 +100,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // 设置今天日期为入住日期的默认值
     const today = new Date();
+    checkInInput.value = today.toLocaleDateString('en-CA'); // en-CA格式生成YYYY-MM-DD
+
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
+    checkOutInput.value = tomorrow.toLocaleDateString('en-CA');
 
-    checkInInput.valueAsDate = today;
-    checkOutInput.valueAsDate = tomorrow;
 
     // 表单验证
     searchForm.addEventListener('submit', function(event) {
