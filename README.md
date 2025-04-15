@@ -79,7 +79,6 @@ A comprehensive hotel booking system built with PHP that allows users to search 
 - **Data Storage**: Flat File System (Text Files)
 - **Styling**: Custom CSS with responsive design
 - **Icons**: Font Awesome
-- **Advanced Features**: AJAX for dynamic content loading
 
 ## Installation Instructions
 
