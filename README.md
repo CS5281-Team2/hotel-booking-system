@@ -64,7 +64,7 @@ A comprehensive hotel booking system built with PHP that allows users to search 
 
 - **Booking Restrictions**
   - Users cannot cancel bookings within 24 hours of check-in
-  - Administrators cannot cancel bookings on the check-in day
+  - Administrators can cancel bookings at any time
   - Maximum stay duration of 30 days
 
 - **AJAX Integration**
@@ -204,7 +204,7 @@ hotel-booking-system/
    - Manage room inventory
    - Monitor bookings
    - Update room status
-   - Handle booking cancellations
+   - Cancel bookings (at any time, without time restrictions)
    - Add new room types
    - Manage room quantities
 
