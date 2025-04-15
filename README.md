@@ -5,44 +5,53 @@
 A comprehensive hotel booking system built with PHP that allows users to search for rooms, make reservations, and manage their bookings. This system features a clean, responsive interface inspired by Marriott's design principles while maintaining simplicity and functionality.
 
 ## Features
-- **User Authentication System**
-  - Register new accounts
-  - Login with existing credentials
-  - Session management
-  - Profile management with editable personal information
-  
-- **Room Management**
-  - View different room types (Standard, Deluxe, Executive Suite, Family Room)
-  - Room availability checking with precise date-based calculation
-  - Detailed room information and images
-  
-- **Booking System**
-  - Date-based room search with automatic validation
-  - Guest quantity selection
-  - Booking confirmation process
-  - Payment simulation
-  - Maximum and minimum stay duration limits
-  - Confirmation email notifications
-  
-- **User Dashboard**
-  - View upcoming stays
-  - View booking history
-  - Cancel existing bookings (with time-based restrictions)
-  - Real-time booking management with AJAX
-  - Edit personal profile information
-  
-- **Admin Panel**
-  - Manage all bookings with cancellation capabilities
-  - View daily check-ins and check-outs
-  - System overview statistics
-  - Add and edit room information including type, price, and capacity
-  - Manage room inventory
-  - Real-time booking management with AJAX
+
+### User Authentication System
+- User Registration with Email Verification
+- Secure Login System
+- Password Reset Functionality
+- Manage Profile and Editable Personal Information
+
+### Room Management
+- View Available Rooms
+- Room Details and Images
+- Room Status Management (Available, Maintenance, Reserved)
+- Room Quantity Tracking
+- Room Image Upload (Max 5MB, JPG/JPEG/PNG/GIF)
+
+### Booking System
+- Real-time Room Availability Check
+- Flexible Date Selection
+- Multiple Room Booking Support
+- Booking Confirmation via Email
+- Booking Status Tracking
+
+### Admin Dashboard
+- Comprehensive Room Management
+  - Add/Edit/Delete Rooms
+  - Room Status Management (Available/Maintenance/Reserved)
+  - Room Image Management
+  - Room Quantity Control
+- Booking Management
+  - View All Bookings
+  - Update Booking Status
+  - Booking Details
+- Dashboard Statistics
+  - Today's Check-ins
+  - Today's Check-outs
+  - Total Bookings
+  - Total Revenue
+
+### International Phone Number Support
+- Mainland China Mobile Numbers (11 digits, starting with 1)
+- Hong Kong Mobile Numbers (8 digits, starting with 5-9)
+- Consistent verification across registration, booking, and profile management
 
 ## Enhanced Features
 - **Improved Room Availability System**
   - Precise date-based availability checking
   - Prevents overbooking by tracking room inventory
+  - Room status management (Available/Maintenance/Reserved)
 
 - **Smart Booking Restrictions**
   - Users cannot cancel bookings within 24 hours of check-in
@@ -64,11 +73,7 @@ A comprehensive hotel booking system built with PHP that allows users to search 
   - Comprehensive file operation error detection
   - User-friendly error messages
   - Automatic date correction with clear notifications
-
-- **International Phone Number Support**
-  - Support for China mainland phone numbers (11 digits, starting with 1)
-  - Support for Hong Kong phone numbers (8 digits, starting with 5-9)
-  - Consistent validation across registration, booking, and profile management
+  - File upload validation and size limits
 
 ## Technologies Used
 - **Frontend**: HTML5, CSS3, JavaScript
@@ -84,6 +89,7 @@ A comprehensive hotel booking system built with PHP that allows users to search 
 - PHP 7.4 or higher
 - Web server (Apache/XAMPP recommended)
 - PHP mail function configured (for email notifications)
+- Write permissions for data directory
 
 ### Local Development Setup
 1. Clone the repository:
@@ -131,6 +137,7 @@ The deployed version on InfinityFree does not support email functionality due to
 - The system requires file write permissions to store user accounts, room information, and bookings
 - Check PHP error logs if you encounter any issues during setup
 - For email issues, check PHP mail configuration and server settings
+- For image upload issues, check file permissions and PHP upload settings
 
 ## Project Structure
 ```
@@ -168,25 +175,34 @@ hotel-booking/
 └── confirmation.php # Booking confirmation
 ```
 
-## Usage
-### For Users
-1. Browse available rooms on the homepage
-2. Use the search functionality to find rooms for specific dates
-3. Register an account or login to make a booking
-4. Complete the booking process
-5. Receive booking confirmation email
-6. View and manage bookings from your account
-7. Update personal information from your profile page
-8. Cancel bookings if needed (receive cancellation email)
-9. Note: Bookings cannot be cancelled within 24 hours of check-in
+## User Workflow
 
-### For Administrators
-1. Login with admin credentials
-2. Access the admin panel
-3. View system statistics and manage bookings
-4. Add new rooms or edit existing room information
-5. View daily check-ins and check-outs
-6. Cancel bookings when necessary (except on check-in day)
+1. **Registration Process**
+   - Enter personal information
+   - Verify email address
+   - Set up password
+   - Complete profile
+
+2. **Booking Process**
+   - Search for available rooms
+   - Select dates and room type
+   - Enter guest information
+   - Confirm booking
+   - Receive email confirmation
+
+3. **Profile Management**
+   - View booking history
+   - Update personal information
+   - Change password
+   - Manage contact details
+
+4. **Admin Operations**
+   - Manage room inventory
+   - Monitor bookings
+   - Update room status
+   - Handle customer inquiries
+   - Upload room images
+   - Manage room quantities
 
 ## Admin Access
 - **Email**: admin@luxuryhotel.com

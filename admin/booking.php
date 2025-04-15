@@ -35,16 +35,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['cancel_booking'])) {
         
         // 如果今天已经是入住日期，不允许取消
         if ($checkInDate->format('Y-m-d') == $today->format('Y-m-d')) {
-            $errorMessage = 'Cannot cancel bookings on check-in day';
+            $errorMessage = 'Cancellation is not permitted on the check-in day. Please contact the guest directly.';
         } else {
             if (updateBookingStatus($bookingId, 'cancelled')) {
-                $successMessage = 'Booking has been cancelled successfully';
+                $successMessage = 'The booking has been cancelled successfully. A confirmation email has been sent to the guest.';
             } else {
-                $errorMessage = 'Failed to cancel booking. Please try again later';
+                $errorMessage = 'Failed to cancel booking. Please try again later or contact system administrator.';
             }
         }
     } else {
-        $errorMessage = 'Booking not found';
+        $errorMessage = 'Booking not found. Please refresh the page and try again.';
     }
 }
 
@@ -98,17 +98,35 @@ foreach ($allBookings as &$booking) {
                         <?php foreach ($allBookings as $booking): ?>
                             <tr style="border-bottom: 1px solid #ddd;" class="booking-row" data-booking-id="<?php echo $booking['id']; ?>">
                                 <td style="padding: 12px 15px;"><?php echo substr($booking['id'], -8); ?></td>
-                                <td style="padding: 12px 15px;"><?php echo $booking['user'][1]; ?></td>
+                                <td style="padding: 12px 15px;">
+                                    <?php 
+                                        if (isset($booking['user']) && is_array($booking['user']) && isset($booking['user'][1])) {
+                                            echo $booking['user'][1];
+                                        } else {
+                                            echo 'Guest Info Not Available';
+                                        }
+                                    ?>
+                                </td>
                                 <td style="padding: 12px 15px;">
                                     <?php 
                                         if (isset($booking['mobile_phone']) && !empty($booking['mobile_phone'])) {
                                             echo $booking['mobile_phone'];
-                                        } else {
+                                        } elseif (isset($booking['user']) && is_array($booking['user']) && isset($booking['user'][3])) {
                                             echo $booking['user'][3]; // 使用用户注册的手机号
+                                        } else {
+                                            echo 'Contact Not Available';
                                         }
                                     ?>
                                 </td>
-                                <td style="padding: 12px 15px;"><?php echo $booking['room']['type']; ?></td>
+                                <td style="padding: 12px 15px;">
+                                    <?php 
+                                        if (isset($booking['room']) && is_array($booking['room']) && isset($booking['room']['type'])) {
+                                            echo $booking['room']['type'];
+                                        } else {
+                                            echo 'Room Info Not Available';
+                                        }
+                                    ?>
+                                </td>
                                 <td style="padding: 12px 15px;"><?php echo date('M j, Y', strtotime($booking['check_in'])); ?></td>
                                 <td style="padding: 12px 15px;"><?php echo date('M j, Y', strtotime($booking['check_out'])); ?></td>
                                 <td style="padding: 12px 15px;"><?php echo $booking['guests']; ?></td>
@@ -154,7 +172,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const actionCell = bookingRow.querySelector('.action-cell');
             
             // 确认取消
-            if (!confirm('Are you sure you want to cancel this booking?')) {
+            if (!confirm('Are you sure you want to cancel this booking? This action cannot be undone and will notify the guest.')) {
                 return;
             }
             
@@ -169,10 +187,30 @@ document.addEventListener('DOMContentLoaded', function() {
             // 发送AJAX请求
             fetch('../api/cancel_booking.php', {
                 method: 'POST',
-                body: formData
+                body: formData,
+                // 添加请求超时
+                signal: AbortSignal.timeout(10000) // 10秒超时
             })
-            .then(response => response.json())
-            .then(data => {
+            .then(response => {
+                // 检查响应状态
+                if (!response.ok) {
+                    throw new Error('Server responded with status: ' + response.status);
+                }
+                // 获取原始文本响应
+                return response.text();
+            })
+            .then(text => {
+                // 尝试解析JSON
+                let data;
+                try {
+                    // 清理响应中可能存在的HTML警告信息
+                    let cleanedText = text.replace(/<br\s*\/?>\s*<b>Warning<\/b>.+?<br\s*\/?>/gi, '');
+                    data = JSON.parse(cleanedText);
+                } catch (e) {
+                    console.error("JSON parse error:", e, "Response text:", text);
+                    throw new Error('Invalid JSON response');
+                }
+                
                 if (data.success) {
                     // 更新UI
                     statusCell.innerHTML = '<span style="background-color: #dc3545; color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.8rem;">Cancelled</span>';

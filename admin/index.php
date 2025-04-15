@@ -15,21 +15,30 @@ if (!isAdmin()) {
 $allBookings = getBookings();
 
 // 获取今天的预订（入住和退房）
-$todayDate = date('Y-m-d');
+// 为了测试，固定今天的日期为2025-04-12
+$todayDate = '2025-04-12'; // 固定日期用于测试
 $todayCheckIns = [];
 $todayCheckOuts = [];
 
 foreach ($allBookings as $booking) {
     if ($booking['check_in'] == $todayDate && $booking['status'] != 'cancelled') {
-        $booking['room'] = getRoomById($booking['room_id']);
-        $booking['user'] = getUserById($booking['user_id']);
-        $todayCheckIns[] = $booking;
+        $room = getRoomById($booking['room_id']);
+        $user = getUserById($booking['user_id']);
+        if ($room && $user) {
+            $booking['room'] = $room;
+            $booking['user'] = $user;
+            $todayCheckIns[] = $booking;
+        }
     }
     
     if ($booking['check_out'] == $todayDate && $booking['status'] != 'cancelled') {
-        $booking['room'] = getRoomById($booking['room_id']);
-        $booking['user'] = getUserById($booking['user_id']);
-        $todayCheckOuts[] = $booking;
+        $room = getRoomById($booking['room_id']);
+        $user = getUserById($booking['user_id']);
+        if ($room && $user) {
+            $booking['room'] = $room;
+            $booking['user'] = $user;
+            $todayCheckOuts[] = $booking;
+        }
     }
 }
 
@@ -108,8 +117,24 @@ $totalRevenue = array_sum(array_column($activeBookings, 'total_price'));
                         <?php foreach ($todayCheckIns as $booking): ?>
                         <tr style="border-bottom: 1px solid #ddd;">
                             <td style="padding: 12px 15px;"><?php echo substr($booking['id'], -8); ?></td>
-                            <td style="padding: 12px 15px;"><?php echo $booking['user'][1]; ?></td>
-                            <td style="padding: 12px 15px;"><?php echo $booking['room']['type']; ?></td>
+                            <td style="padding: 12px 15px;">
+                                <?php 
+                                    if (isset($booking['user']) && is_array($booking['user']) && isset($booking['user'][1])) {
+                                        echo $booking['user'][1];
+                                    } else {
+                                        echo 'Guest Info Not Available';
+                                    }
+                                ?>
+                            </td>
+                            <td style="padding: 12px 15px;">
+                                <?php 
+                                    if (isset($booking['room']) && is_array($booking['room']) && isset($booking['room']['type'])) {
+                                        echo $booking['room']['type'];
+                                    } else {
+                                        echo 'Room Info Not Available';
+                                    }
+                                ?>
+                            </td>
                             <td style="padding: 12px 15px;">
                                 <?php echo date('M j, Y', strtotime($booking['check_in'])); ?></td>
                             <td style="padding: 12px 15px;">
@@ -151,8 +176,24 @@ $totalRevenue = array_sum(array_column($activeBookings, 'total_price'));
                         <?php foreach ($todayCheckOuts as $booking): ?>
                         <tr style="border-bottom: 1px solid #ddd;">
                             <td style="padding: 12px 15px;"><?php echo substr($booking['id'], -8); ?></td>
-                            <td style="padding: 12px 15px;"><?php echo $booking['user'][1]; ?></td>
-                            <td style="padding: 12px 15px;"><?php echo $booking['room']['type']; ?></td>
+                            <td style="padding: 12px 15px;">
+                                <?php 
+                                    if (isset($booking['user']) && is_array($booking['user']) && isset($booking['user'][1])) {
+                                        echo $booking['user'][1];
+                                    } else {
+                                        echo 'Guest Info Not Available';
+                                    }
+                                ?>
+                            </td>
+                            <td style="padding: 12px 15px;">
+                                <?php 
+                                    if (isset($booking['room']) && is_array($booking['room']) && isset($booking['room']['type'])) {
+                                        echo $booking['room']['type'];
+                                    } else {
+                                        echo 'Room Info Not Available';
+                                    }
+                                ?>
+                            </td>
                             <td style="padding: 12px 15px;">
                                 <?php echo date('M j, Y', strtotime($booking['check_in'])); ?></td>
                             <td style="padding: 12px 15px;">
@@ -170,6 +211,7 @@ $totalRevenue = array_sum(array_column($activeBookings, 'total_price'));
 
         <div style="text-align: center; margin-top: 30px;">
             <a href="booking.php" class="btn btn-primary">View All Bookings</a>
+            <a href="room.php" class="btn btn-primary" style="margin-left: 10px;">Manage Rooms</a>
         </div>
     </div>
 </section>

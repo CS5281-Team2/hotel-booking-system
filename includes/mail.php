@@ -88,7 +88,7 @@ function sendBookingConfirmationEmail($userEmail, $userName, $bookingDetails, $r
     $headers .= 'From: Luxury Hotel <noreply@luxuryhotel.com>' . "\r\n";
     
     // 发送邮件
-    $mailSent = mail($userEmail, $subject, $message, $headers);
+    $mailSent = @mail($userEmail, $subject, $message, $headers);
     
     // 记录邮件发送情况到日志（可选）
     if (!$mailSent) {
@@ -102,6 +102,18 @@ function sendBookingConfirmationEmail($userEmail, $userName, $bookingDetails, $r
  * 发送预订取消确认邮件
  */
 function sendBookingCancellationEmail($userEmail, $userName, $bookingDetails, $roomDetails) {
+    // 检查参数
+    if (empty($userEmail) || empty($userName)) {
+        error_log("Missing required parameters for sending cancellation email");
+        return false;
+    }
+    
+    // 检查预订详情和房间信息
+    if (!is_array($bookingDetails) || !is_array($roomDetails)) {
+        error_log("Invalid booking or room details for sending cancellation email");
+        return false;
+    }
+    
     $subject = 'Your Booking Cancellation - Luxury Hotel';
     
     // 创建HTML格式的邮件内容
@@ -178,8 +190,8 @@ function sendBookingCancellationEmail($userEmail, $userName, $bookingDetails, $r
     $headers .= "Content-type:text/html;charset=UTF-8" . "\r\n";
     $headers .= 'From: Luxury Hotel <noreply@luxuryhotel.com>' . "\r\n";
     
-    // 发送邮件
-    $mailSent = mail($userEmail, $subject, $message, $headers);
+    // 发送邮件 - 使用@抑制错误输出
+    $mailSent = @mail($userEmail, $subject, $message, $headers);
     
     // 记录邮件发送情况到日志（可选）
     if (!$mailSent) {

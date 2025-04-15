@@ -1,299 +1,231 @@
 <?php
-$pageTitle = 'Book a Room';
-include 'includes/header.php';
-require_once 'includes/db.php';
-require_once 'includes/auth.php';
+$pageTitle = 'Manage Bookings';
+$adminPage = true;
+include '../includes/header.php';
+require_once '../includes/db.php';
+require_once '../includes/auth.php';
 
-// 验证用户登录状态
-if (!isset($_SESSION['user_id'])) {
-    header('Location: login.php');
+// 验证管理员权限
+if (!isAdmin()) {
+    header('Location: ../login.php');
     exit;
 }
 
-// 获取请求参数
-$roomId = isset($_GET['room_id']) ? $_GET['room_id'] : '';
-$checkIn = isset($_GET['check_in']) ? $_GET['check_in'] : '';
-$checkOut = isset($_GET['check_out']) ? $_GET['check_out'] : '';
-$guests = isset($_GET['guests']) ? intval($_GET['guests']) : 2;
+// 获取所有预订
+$allBookings = getBookings();
 
-// 验证数据
-$validData = false;
+// 按日期降序排序（最新的在前）
+usort($allBookings, function($a, $b) {
+    return strtotime($b['created_at']) - strtotime($a['created_at']);
+});
+
+// 处理取消预订
+$successMessage = '';
 $errorMessage = '';
 
-if (empty($roomId) || empty($checkIn) || empty($checkOut)) {
-    $errorMessage = 'Missing required booking information';
-} else {
-    // 获取房间信息
-    $room = getRoomById($roomId);
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['cancel_booking'])) {
+    $bookingId = $_POST['booking_id'];
+    $booking = getBookingById($bookingId);
     
-    if (!$room) {
-        $errorMessage = 'Room not found';
-    } else {
-        // 验证日期
-        $checkInDate = new DateTime($checkIn);
-        $checkOutDate = new DateTime($checkOut);
-        $todayDate = new DateTime();
-        $todayDate->setTime(0, 0, 0);
+    if ($booking) {
+        // 检查是否是入住当天
+        $checkInDate = new DateTime($booking['check_in']);
+        $today = new DateTime();
+        $today->setTime(0, 0, 0);
         
-        if ($checkInDate < $todayDate) {
-            $errorMessage = 'Check-in date cannot be in the past';
-        } elseif ($checkOutDate <= $checkInDate) {
-            $errorMessage = 'Check-out date must be after check-in date';
-        } elseif ($guests > $room['capacity']) {
-            $errorMessage = 'Room capacity exceeded';
-        } elseif (!isRoomAvailable($roomId, $checkIn, $checkOut)) {
-            $errorMessage = 'Room is not available for the selected dates';
+        // 如果今天已经是入住日期，不允许取消
+        if ($checkInDate->format('Y-m-d') == $today->format('Y-m-d')) {
+            $errorMessage = 'Cancellation is not permitted on the check-in day. Please contact the guest directly.';
         } else {
-            $validData = true;
-            
-            // 计算住宿天数和总价格
-            $interval = $checkInDate->diff($checkOutDate);
-            $nights = $interval->days;
-            $totalPrice = $room['price'] * $nights;
+            if (updateBookingStatus($bookingId, 'cancelled')) {
+                $successMessage = 'The booking has been cancelled successfully. A confirmation email has been sent to the guest.';
+            } else {
+                $errorMessage = 'Failed to cancel booking. Please try again later or contact system administrator.';
+            }
         }
+    } else {
+        $errorMessage = 'Booking not found. Please refresh the page and try again.';
     }
 }
 
-// 处理预订提交
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && $validData) {
-    // 验证支付信息
-    $cardName = isset($_POST['card_name']) ? trim($_POST['card_name']) : '';
-    $cardNumber = isset($_POST['card_number']) ? str_replace(' ', '', $_POST['card_number']) : '';
-    $cardExpiry = isset($_POST['card_expiry']) ? trim($_POST['card_expiry']) : '';
-    $cardCvv = isset($_POST['card_cvv']) ? trim($_POST['card_cvv']) : '';
-    $mobilePhone = isset($_POST['mobile_phone']) ? trim($_POST['mobile_phone']) : '';
-    
-    $validPayment = true;
-    
-    // 验证手机号码（支持中国大陆和香港格式）
-    if (empty($mobilePhone)) {
-        $validPayment = false;
-        $errorMessage = 'Please enter your mobile phone number';
-    } elseif (!preg_match('/^1[3-9]\d{9}$/', $mobilePhone) && !preg_match('/^[5-9]\d{7}$/', $mobilePhone)) {
-        $validPayment = false;
-        $errorMessage = 'Please enter a valid phone number (China mainland: 11 digits starting with 1, Hong Kong: 8 digits starting with 5-9)';
-    } elseif (empty($cardName)) {
-        $validPayment = false;
-        $errorMessage = 'Please enter the name on card';
-    } elseif (empty($cardNumber) || !preg_match('/^\d{16}$/', $cardNumber)) {
-        $validPayment = false;
-        $errorMessage = 'Please enter a valid 16-digit card number';
-    } elseif (empty($cardExpiry) || !preg_match('/^\d{2}\/\d{2}$/', $cardExpiry)) {
-        $validPayment = false;
-        $errorMessage = 'Please enter a valid expiry date (MM/YY)';
-    } elseif (empty($cardCvv) || !preg_match('/^\d{3}$/', $cardCvv)) {
-        $validPayment = false;
-        $errorMessage = 'Please enter a valid 3-digit CVV';
-    }
-    
-    if ($validPayment) {
-        // 创建预订
-        $bookingId = generateId();
-        $userId = $_SESSION['user_id'];
-        $status = 'confirmed';
-        $createdAt = date('Y-m-d H:i:s');
-        
-        $bookingData = [
-            'id' => $bookingId,
-            'user_id' => $userId,
-            'room_id' => $roomId,
-            'check_in' => $checkIn,
-            'check_out' => $checkOut,
-            'guests' => $guests,
-            'total_price' => $totalPrice,
-            'status' => $status,
-            'created_at' => $createdAt,
-            'mobile_phone' => $mobilePhone
-        ];
-        
-        if (addBooking($bookingData)) {
-            // 发送确认邮件
-            require_once 'includes/mail.php';
-            
-            // 发送确认邮件
-            sendBookingConfirmationEmail(
-                $_SESSION['user_email'],
-                $_SESSION['user_name'],
-                $bookingData,
-                $room
-            );
-            
-            // 重定向到确认页面
-            header("Location: confirmation.php?booking_id=$bookingId");
-            exit;
-        } else {
-            $errorMessage = 'Failed to create booking. Please try again.';
-        }
-    }
+// 添加房间和用户信息到预订
+foreach ($allBookings as &$booking) {
+    $booking['room'] = getRoomById($booking['room_id']);
+    $booking['user'] = getUserById($booking['user_id']);
 }
 ?>
 
 <section style="padding: 50px 0;">
     <div class="container">
-        <h1 style="margin-bottom: 20px;">Complete Your Booking</h1>
+        <h1 style="margin-bottom: 20px;">Manage Bookings</h1>
         
-        <?php if (!$validData): ?>
-            <div class="alert alert-error">
-                <?php echo $errorMessage; ?>
-            </div>
+        <div id="status-message">
+            <?php if (!empty($successMessage)): ?>
+                <div class="alert alert-success">
+                    <?php echo $successMessage; ?>
+                </div>
+            <?php endif; ?>
             
-            <div style="text-align: center; margin-top: 30px;">
-                <a href="search.php" class="btn btn-primary">Back to Search</a>
-            </div>
-        <?php else: ?>
-            <div style="display: flex; margin-bottom: 20px;">
-                <div style="flex: 0 0 300px; margin-right: 30px;">
-                    <img src="assets/images/rooms/<?php echo $room['image']; ?>" alt="<?php echo $room['type']; ?>" style="width: 100%; border-radius: 4px;">
-                    
-                    <div style="margin-top: 20px; border: 1px solid #ddd; border-radius: 4px; padding: 15px;">
-                        <h3><?php echo $room['type']; ?></h3>
-                        <p><?php echo $room['description']; ?></p>
-                        
-                        <div style="margin-top: 10px;">
-                            <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
-                                <span>Guests:</span>
-                                <span><?php echo $guests; ?> Person<?php echo $guests > 1 ? 's' : ''; ?></span>
-                            </div>
-                            
-                            <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
-                                <span>Breakfast:</span>
-                                <span><?php echo $room['breakfast'] == 'Yes' ? 'Included' : 'Not included'; ?></span>
-                            </div>
-                            
-                            <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
-                                <span>Check-in:</span>
-                                <span><?php echo date('M j, Y', strtotime($checkIn)); ?></span>
-                            </div>
-                            
-                            <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
-                                <span>Check-out:</span>
-                                <span><?php echo date('M j, Y', strtotime($checkOut)); ?></span>
-                            </div>
-                            
-                            <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
-                                <span>Price per night:</span>
-                                <span>$<?php echo $room['price']; ?></span>
-                            </div>
-                            
-                            <div style="display: flex; justify-content: space-between; font-weight: bold; margin-top: 10px; padding-top: 10px; border-top: 1px solid #ddd;">
-                                <span>Total (<?php echo $nights; ?> nights):</span>
-                                <span>$<?php echo number_format($totalPrice, 2); ?></span>
-                            </div>
-                        </div>
-                    </div>
+            <?php if (!empty($errorMessage)): ?>
+                <div class="alert alert-error">
+                    <?php echo $errorMessage; ?>
                 </div>
-                
-                <div style="flex: 1;">
-                    <div class="card">
-                        <div class="card-body">
-                            <h2 class="card-title">Payment Information</h2>
-                            
-                            <?php if (!empty($errorMessage)): ?>
-                                <div class="alert alert-error">
-                                    <?php echo $errorMessage; ?>
-                                </div>
-                            <?php endif; ?>
-                            
-                            <form action="booking.php?room_id=<?php echo $roomId; ?>&check_in=<?php echo urlencode($checkIn); ?>&check_out=<?php echo urlencode($checkOut); ?>&guests=<?php echo $guests; ?>" method="POST">
-                                <div style="margin-bottom: 15px;">
-                                    <label for="mobile_phone">Mobile Phone Number</label>
-                                    <input type="text" id="mobile_phone" name="mobile_phone" class="form-control" placeholder="China: 13812345678 / Hong Kong: 51234567" required>
-                                    <small style="color: #666; font-size: 0.8rem;">For booking confirmation and updates</small>
-                                </div>
-                                
-                                <div style="margin-bottom: 15px;">
-                                    <label for="card_name">Name on Card</label>
-                                    <input type="text" id="card_name" name="card_name" class="form-control" required>
-                                </div>
-                                
-                                <div style="margin-bottom: 15px;">
-                                    <label for="card_number">Card Number</label>
-                                    <input type="text" id="card_number" name="card_number" class="form-control" placeholder="1234 5678 9012 3456" required>
-                                </div>
-                                
-                                <div style="display: flex; margin-bottom: 15px;">
-                                    <div style="flex: 1; margin-right: 10px;">
-                                        <label for="card_expiry">Expiry Date (MM/YY)</label>
-                                        <input type="text" id="card_expiry" name="card_expiry" class="form-control" placeholder="MM/YY" required>
-                                    </div>
-                                    
-                                    <div style="flex: 1;">
-                                        <label for="card_cvv">CVV</label>
-                                        <input type="text" id="card_cvv" name="card_cvv" class="form-control" placeholder="123" required>
-                                    </div>
-                                </div>
-                                
-                                <div style="margin-top: 20px;">
-                                    <button type="submit" class="btn btn-primary" style="width: 100%;">Complete Booking</button>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
-                    
-                    <div style="margin-top: 20px;">
-                        <a href="search.php" class="btn btn-outline">Back to Search</a>
-                    </div>
-                </div>
-            </div>
-        <?php endif; ?>
+            <?php endif; ?>
+        </div>
+        
+        <div style="overflow-x: auto; margin-top: 20px;">
+            <table style="width: 100%; border-collapse: collapse;">
+                <thead>
+                    <tr style="background-color: var(--primary-color); color: white;">
+                        <th style="padding: 12px 15px; text-align: left;">ID</th>
+                        <th style="padding: 12px 15px; text-align: left;">Guest</th>
+                        <th style="padding: 12px 15px; text-align: left;">Contact</th>
+                        <th style="padding: 12px 15px; text-align: left;">Room</th>
+                        <th style="padding: 12px 15px; text-align: left;">Check-in</th>
+                        <th style="padding: 12px 15px; text-align: left;">Check-out</th>
+                        <th style="padding: 12px 15px; text-align: left;">Guests</th>
+                        <th style="padding: 12px 15px; text-align: right;">Total</th>
+                        <th style="padding: 12px 15px; text-align: center;">Status</th>
+                        <th style="padding: 12px 15px; text-align: center;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php if (empty($allBookings)): ?>
+                        <tr>
+                            <td colspan="10" style="padding: 20px; text-align: center;">No bookings found</td>
+                        </tr>
+                    <?php else: ?>
+                        <?php foreach ($allBookings as $booking): ?>
+                            <tr style="border-bottom: 1px solid #ddd;" class="booking-row" data-booking-id="<?php echo $booking['id']; ?>">
+                                <td style="padding: 12px 15px;"><?php echo substr($booking['id'], -8); ?></td>
+                                <td style="padding: 12px 15px;"><?php echo $booking['user'][1]; ?></td>
+                                <td style="padding: 12px 15px;">
+                                    <?php 
+                                        if (isset($booking['mobile_phone']) && !empty($booking['mobile_phone'])) {
+                                            echo $booking['mobile_phone'];
+                                        } else {
+                                            echo $booking['user'][3]; // 使用用户注册的手机号
+                                        }
+                                    ?>
+                                </td>
+                                <td style="padding: 12px 15px;"><?php echo $booking['room']['type']; ?></td>
+                                <td style="padding: 12px 15px;"><?php echo date('M j, Y', strtotime($booking['check_in'])); ?></td>
+                                <td style="padding: 12px 15px;"><?php echo date('M j, Y', strtotime($booking['check_out'])); ?></td>
+                                <td style="padding: 12px 15px;"><?php echo $booking['guests']; ?></td>
+                                <td style="padding: 12px 15px; text-align: right;">$<?php echo number_format($booking['total_price'], 2); ?></td>
+                                <td style="padding: 12px 15px; text-align: center;" class="status-cell">
+                                    <?php if ($booking['status'] == 'confirmed'): ?>
+                                        <span style="background-color: #28a745; color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.8rem;">Confirmed</span>
+                                    <?php elseif ($booking['status'] == 'cancelled'): ?>
+                                        <span style="background-color: #dc3545; color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.8rem;">Cancelled</span>
+                                    <?php endif; ?>
+                                </td>
+                                <td style="padding: 12px 15px; text-align: center;" class="action-cell">
+                                    <?php if ($booking['status'] == 'confirmed'): ?>
+                                        <button class="cancel-booking-btn" data-booking-id="<?php echo $booking['id']; ?>" style="background-color: #dc3545; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer;">Cancel</button>
+                                    <?php else: ?>
+                                        -
+                                    <?php endif; ?>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
+                </tbody>
+            </table>
+        </div>
+        
+        <div style="text-align: center; margin-top: 30px;">
+            <a href="index.php" class="btn btn-primary">Back to Dashboard</a>
+        </div>
     </div>
 </section>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    const bookingForm = document.querySelector('form');
+    // 找到所有取消预订按钮
+    const cancelButtons = document.querySelectorAll('.cancel-booking-btn');
+    const statusMessage = document.getElementById('status-message');
     
-    if (bookingForm) {
-        bookingForm.addEventListener('submit', function(event) {
-            let hasError = false;
-            let errorMessage = '';
+    cancelButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            const bookingId = this.getAttribute('data-booking-id');
+            const bookingRow = this.closest('.booking-row');
+            const statusCell = bookingRow.querySelector('.status-cell');
+            const actionCell = bookingRow.querySelector('.action-cell');
             
-            // 获取表单字段值
-            const mobilePhone = document.getElementById('mobile_phone').value.trim();
-            const cardName = document.getElementById('card_name').value.trim();
-            const cardNumber = document.getElementById('card_number').value.replace(/\s/g, '');
-            const cardExpiry = document.getElementById('card_expiry').value.trim();
-            const cardCvv = document.getElementById('card_cvv').value.trim();
-            
-            // 验证手机号
-            if (mobilePhone === '') {
-                errorMessage = 'Please enter your mobile phone number';
-                hasError = true;
-            }
-            // 验证手机号格式 - 中国大陆或香港
-            else if (!(/^1[3-9]\d{9}$/.test(mobilePhone) || /^[5-9]\d{7}$/.test(mobilePhone))) {
-                errorMessage = 'Please enter a valid phone number (China mainland: 11 digits starting with 1, Hong Kong: 8 digits starting with 5-9)';
-                hasError = true;
-            }
-            // 验证持卡人姓名
-            else if (cardName === '') {
-                errorMessage = 'Please enter the name on card';
-                hasError = true;
-            }
-            // 验证卡号
-            else if (cardNumber === '' || !/^\d{16}$/.test(cardNumber)) {
-                errorMessage = 'Please enter a valid 16-digit card number';
-                hasError = true;
-            }
-            // 验证有效期
-            else if (cardExpiry === '' || !/^\d{2}\/\d{2}$/.test(cardExpiry)) {
-                errorMessage = 'Please enter a valid expiry date (MM/YY)';
-                hasError = true;
-            }
-            // 验证CVV
-            else if (cardCvv === '' || !/^\d{3}$/.test(cardCvv)) {
-                errorMessage = 'Please enter a valid 3-digit CVV';
-                hasError = true;
+            // 确认取消
+            if (!confirm('Are you sure you want to cancel this booking?')) {
+                return;
             }
             
-            // 如果有错误，阻止表单提交并显示错误
-            if (hasError) {
-                event.preventDefault();
-                alert(errorMessage);
-            }
+            // 显示加载状态
+            this.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+            this.disabled = true;
+            
+            // 准备表单数据
+            const formData = new FormData();
+            formData.append('booking_id', bookingId);
+            
+            // 发送AJAX请求
+            fetch('../api/cancel_booking.php', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // 更新UI
+                    statusCell.innerHTML = '<span style="background-color: #dc3545; color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.8rem;">Cancelled</span>';
+                    actionCell.innerHTML = '-';
+                    
+                    // 显示成功消息
+                    statusMessage.innerHTML = `
+                        <div class="alert alert-success">
+                            ${data.message}
+                        </div>
+                    `;
+                    
+                    // 3秒后淡出消息
+                    setTimeout(() => {
+                        const alert = statusMessage.querySelector('.alert');
+                        if (alert) {
+                            alert.style.transition = 'opacity 1s';
+                            alert.style.opacity = '0';
+                            setTimeout(() => {
+                                statusMessage.innerHTML = '';
+                            }, 1000);
+                        }
+                    }, 3000);
+                } else {
+                    // 恢复按钮状态
+                    this.innerHTML = 'Cancel';
+                    this.disabled = false;
+                    
+                    // 显示错误消息
+                    statusMessage.innerHTML = `
+                        <div class="alert alert-error">
+                            ${data.message}
+                        </div>
+                    `;
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                
+                // 恢复按钮状态
+                this.innerHTML = 'Cancel';
+                this.disabled = false;
+                
+                // 显示错误消息
+                statusMessage.innerHTML = `
+                    <div class="alert alert-error">
+                        An error occurred. Please try again later.
+                    </div>
+                `;
+            });
         });
-    }
+    });
 });
 </script>
 
-<?php include 'includes/footer.php'; ?>
+<?php include '../includes/footer.php'; ?>

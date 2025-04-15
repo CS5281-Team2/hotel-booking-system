@@ -231,79 +231,100 @@ document.addEventListener('DOMContentLoaded', function() {
         const apiUrl = `api/search_rooms.php?check_in=${checkInInput.value}&check_out=${checkOutInput.value}&guests=${guestsSelect.value}`;
         
         // 发送AJAX请求
-        fetch(apiUrl)
-            .then(response => response.json())
-            .then(data => {
-                // 隐藏加载指示器
-                loadingIndicator.style.display = 'none';
-                searchResults.style.display = 'block';
-                
-                // 处理响应
-                if (!data.success) {
-                    searchResults.innerHTML = `<div class="alert alert-error">${data.message}</div>`;
-                    return;
-                }
-                
-                // 更新浏览器历史记录（方便分享和刷新）
-                const newUrl = `search.php?check_in=${data.check_in}&check_out=${data.check_out}&guests=${data.guests}`;
-                window.history.pushState({path: newUrl}, '', newUrl);
-                
-                // 处理无可用房间的情况
-                if (data.rooms.length === 0) {
-                    searchResults.innerHTML = `
-                        <div class="alert alert-error">
-                            No rooms available for your selected dates and number of guests. Please try different dates or reduce the number of guests.
-                        </div>
-                    `;
-                    return;
-                }
-                
-                // 显示房间列表
-                let roomsHtml = '<div>';
-                
-                data.rooms.forEach(room => {
-                    roomsHtml += `
-                        <div class="card" style="display: flex; margin-bottom: 30px;">
-                            <div style="flex: 0 0 300px;">
-                                <img src="assets/images/rooms/${room.image}" alt="${room.type}" style="width: 100%; height: 100%; object-fit: cover;">
-                            </div>
-                            <div class="card-body" style="flex: 1; display: flex; flex-direction: column; justify-content: space-between;">
-                                <div>
-                                    <h3 class="card-title">${room.type}</h3>
-                                    <p class="card-text">${room.description}</p>
-                                    <div style="margin-top: 15px;">
-                                        <p><strong>Capacity:</strong> ${room.capacity} Persons</p>
-                                        <p><strong>Breakfast:</strong> ${room.breakfast == 'Yes' ? 'Included' : 'Not included'}</p>
-                                    </div>
-                                </div>
-                                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 15px;">
-                                    <div>
-                                        <p style="font-size: 1.2rem;"><strong>$${room.price}</strong> per night</p>
-                                        <p><strong>Total:</strong> $${room.total_price} for ${data.nights} night${data.nights > 1 ? 's' : ''}</p>
-                                    </div>
-                                    <a href="booking.php?room_id=${room.id}&check_in=${data.check_in}&check_out=${data.check_out}&guests=${data.guests}" class="btn btn-primary">Book Now</a>
-                                </div>
-                            </div>
-                        </div>
-                    `;
-                });
-                
-                roomsHtml += '</div>';
-                searchResults.innerHTML = roomsHtml;
-            })
-            .catch(error => {
-                // 隐藏加载指示器
-                loadingIndicator.style.display = 'none';
-                searchResults.style.display = 'block';
-                
-                // 显示错误信息
+        fetch(apiUrl, {
+            // 添加请求超时
+            signal: AbortSignal.timeout(10000) // 10秒超时
+        })
+        .then(response => {
+            // 检查响应状态
+            if (!response.ok) {
+                throw new Error('Server responded with status: ' + response.status);
+            }
+            // 获取原始文本响应
+            return response.text();
+        })
+        .then(text => {
+            // 尝试解析JSON
+            let data;
+            try {
+                // 清理响应中可能存在的HTML警告信息
+                let cleanedText = text.replace(/<br\s*\/?>\s*<b>Warning<\/b>.+?<br\s*\/?>/gi, '');
+                data = JSON.parse(cleanedText);
+            } catch (e) {
+                console.error("JSON parse error:", e, "Response text:", text);
+                throw new Error('Invalid JSON response');
+            }
+            
+            // 隐藏加载指示器
+            loadingIndicator.style.display = 'none';
+            searchResults.style.display = 'block';
+            
+            // 处理响应
+            if (!data.success) {
+                searchResults.innerHTML = `<div class="alert alert-error">${data.message}</div>`;
+                return;
+            }
+            
+            // 更新浏览器历史记录（方便分享和刷新）
+            const newUrl = `search.php?check_in=${data.check_in}&check_out=${data.check_out}&guests=${data.guests}`;
+            window.history.pushState({path: newUrl}, '', newUrl);
+            
+            // 处理无可用房间的情况
+            if (data.rooms.length === 0) {
                 searchResults.innerHTML = `
                     <div class="alert alert-error">
-                        An error occurred while searching for rooms. Please try again later.
+                        No rooms available for your selected dates and number of guests. Please try different dates or reduce the number of guests.
                     </div>
                 `;
-                console.error('Error:', error);
+                return;
+            }
+            
+            // 显示房间列表
+            let roomsHtml = '<div>';
+            
+            data.rooms.forEach(room => {
+                roomsHtml += `
+                    <div class="card" style="display: flex; margin-bottom: 30px;">
+                        <div style="flex: 0 0 300px;">
+                            <img src="assets/images/rooms/${room.image}" alt="${room.type}" style="width: 100%; height: 100%; object-fit: cover;">
+                        </div>
+                        <div class="card-body" style="flex: 1; display: flex; flex-direction: column; justify-content: space-between;">
+                            <div>
+                                <h3 class="card-title">${room.type}</h3>
+                                <p class="card-text">${room.description}</p>
+                                <div style="margin-top: 15px;">
+                                    <p><strong>Capacity:</strong> ${room.capacity} Persons</p>
+                                    <p><strong>Breakfast:</strong> ${room.breakfast == 'Yes' ? 'Included' : 'Not included'}</p>
+                                </div>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 15px;">
+                                <div>
+                                    <p style="font-size: 1.2rem;"><strong>$${room.price}</strong> per night</p>
+                                    <p><strong>Total:</strong> $${room.total_price} for ${data.nights} night${data.nights > 1 ? 's' : ''}</p>
+                                </div>
+                                <a href="booking.php?room_id=${room.id}&check_in=${data.check_in}&check_out=${data.check_out}&guests=${data.guests}" class="btn btn-primary">Book Now</a>
+                            </div>
+                        </div>
+                    </div>
+                `;
             });
+            
+            roomsHtml += '</div>';
+            searchResults.innerHTML = roomsHtml;
+        })
+        .catch(error => {
+            // 隐藏加载指示器
+            loadingIndicator.style.display = 'none';
+            searchResults.style.display = 'block';
+            
+            // 显示错误信息
+            searchResults.innerHTML = `
+                <div class="alert alert-error">
+                    An error occurred while searching for rooms. Please try again later.
+                </div>
+            `;
+            console.error('Error:', error);
+        });
     });
 
     // 当入住日期变化时更新退房日期最小值

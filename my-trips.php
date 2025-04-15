@@ -55,18 +55,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['cancel_booking'])) {
         $hoursUntilCheckIn = $interval->days * 24 + $interval->h;
         
         if ($hoursUntilCheckIn < 24 && $checkInDate > $now) {
-            $cancelError = 'Cannot cancel booking within 24 hours of check-in';
+            $cancelError = 'Cancellation is not permitted within 24 hours of check-in. Please contact our hotel directly for assistance.';
         } else if ($checkInDate < $now) {
-            $cancelError = 'Cannot cancel booking after check-in date has passed';
+            $cancelError = 'Cannot cancel a booking after the check-in date has passed. Please contact our hotel directly if you need assistance.';
         } else {
             if (updateBookingStatus($bookingId, 'cancelled')) {
-                $successMessage = 'Booking has been cancelled successfully';
+                $successMessage = 'Your booking has been cancelled successfully. A confirmation email will be sent shortly.';
             } else {
-                $cancelError = 'Failed to cancel booking. Please try again later';
+                $cancelError = 'Failed to cancel booking. Please try again later or contact our support team.';
             }
         }
     } else {
-        $cancelError = 'Booking does not exist or you do not have permission to cancel it';
+        $cancelError = 'Booking does not exist or you do not have permission to cancel it.';
     }
 }
 ?>
@@ -108,7 +108,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['cancel_booking'])) {
                         <div class="card booking-card" data-booking-id="<?php echo $booking['id']; ?>" style="margin-top: 20px;">
                             <div class="card-body" style="display: flex; flex-wrap: wrap;">
                                 <div style="flex: 0 0 150px; margin-right: 20px;">
-                                    <img src="https://via.placeholder.com/150x100?text=<?php echo str_replace(' ', '+', $booking['room']['type']); ?>" alt="<?php echo $booking['room']['type']; ?>" style="width: 150px; height: 100px; object-fit: cover; border-radius: 4px;">
+                                    <img src="assets/images/rooms/<?php echo $booking['room']['image']; ?>" alt="<?php echo $booking['room']['type']; ?>" style="width: 150px; height: 100px; object-fit: cover; border-radius: 4px;">
                                 </div>
                                 
                                 <div style="flex: 1; min-width: 300px;">
@@ -156,7 +156,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['cancel_booking'])) {
                         <div class="card" style="margin-top: 20px;">
                             <div class="card-body" style="display: flex; flex-wrap: wrap;">
                                 <div style="flex: 0 0 150px; margin-right: 20px;">
-                                    <img src="https://via.placeholder.com/150x100?text=<?php echo str_replace(' ', '+', $booking['room']['type']); ?>" alt="<?php echo $booking['room']['type']; ?>" style="width: 150px; height: 100px; object-fit: cover; border-radius: 4px;">
+                                    <img src="assets/images/rooms/<?php echo $booking['room']['image']; ?>" alt="<?php echo $booking['room']['type']; ?>" style="width: 150px; height: 100px; object-fit: cover; border-radius: 4px;">
                                 </div>
                                 
                                 <div style="flex: 1; min-width: 300px;">
@@ -196,7 +196,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['cancel_booking'])) {
                         <div class="card" style="margin-top: 20px;">
                             <div class="card-body" style="display: flex; flex-wrap: wrap;">
                                 <div style="flex: 0 0 150px; margin-right: 20px;">
-                                    <img src="https://via.placeholder.com/150x100?text=<?php echo str_replace(' ', '+', $booking['room']['type']); ?>" alt="<?php echo $booking['room']['type']; ?>" style="width: 150px; height: 100px; object-fit: cover; border-radius: 4px;">
+                                    <img src="assets/images/rooms/<?php echo $booking['room']['image']; ?>" alt="<?php echo $booking['room']['type']; ?>" style="width: 150px; height: 100px; object-fit: cover; border-radius: 4px;">
                                 </div>
                                 
                                 <div style="flex: 1; min-width: 300px;">
@@ -244,7 +244,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const buttonContainer = this.parentElement;
             
             // 确认取消
-            if (!confirm('Are you sure you want to cancel this booking?')) {
+            if (!confirm('Are you sure you want to cancel this booking? This action cannot be undone. Please note that cancellations are not permitted within 24 hours of check-in.')) {
                 return;
             }
             
@@ -259,10 +259,30 @@ document.addEventListener('DOMContentLoaded', function() {
             // 发送AJAX请求
             fetch('api/cancel_booking.php', {
                 method: 'POST',
-                body: formData
+                body: formData,
+                // 添加请求超时
+                signal: AbortSignal.timeout(10000) // 10秒超时
             })
-            .then(response => response.json())
-            .then(data => {
+            .then(response => {
+                // 检查响应状态
+                if (!response.ok) {
+                    throw new Error('Server responded with status: ' + response.status);
+                }
+                // 获取原始文本响应
+                return response.text();
+            })
+            .then(text => {
+                // 尝试解析JSON
+                let data;
+                try {
+                    // 清理响应中可能存在的HTML警告信息
+                    let cleanedText = text.replace(/<br\s*\/?>\s*<b>Warning<\/b>.+?<br\s*\/?>/gi, '');
+                    data = JSON.parse(cleanedText);
+                } catch (e) {
+                    console.error("JSON parse error:", e, "Response text:", text);
+                    throw new Error('Invalid JSON response');
+                }
+                
                 if (data.success) {
                     // 更新UI
                     bookingCard.querySelector('.booking-status').textContent = 'Cancelled';

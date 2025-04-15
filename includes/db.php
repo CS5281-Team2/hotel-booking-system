@@ -4,6 +4,14 @@ define('USERS_FILE', __DIR__ . '/../data/users.txt');
 define('ROOMS_FILE', __DIR__ . '/../data/rooms.txt');
 define('BOOKINGS_FILE', __DIR__ . '/../data/bookings.txt');
 
+// 定义房型常量
+define('ROOM_TYPES', [
+    'Standard Room' => 'Standard Room',
+    'Deluxe Room' => 'Deluxe Room',
+    'Executive Suite' => 'Executive Suite',
+    'Family Room' => 'Family Room'
+]);
+
 // 确保数据目录存在
 if (!file_exists(__DIR__ . '/../data')) {
     if (!mkdir(__DIR__ . '/../data', 0777, true)) {
@@ -110,7 +118,7 @@ function getRooms() {
     foreach ($rooms as $room) {
         if (empty($room)) continue;
         $roomData = explode('|', $room);
-        if (count($roomData) >= 8) {
+        if (count($roomData) >= 9) {
             $roomsData[] = [
                 'id' => $roomData[0],
                 'type' => $roomData[1],
@@ -119,7 +127,8 @@ function getRooms() {
                 'capacity' => $roomData[4],
                 'description' => $roomData[5],
                 'image' => $roomData[6],
-                'quantity' => $roomData[7]
+                'quantity' => $roomData[7],
+                'status' => $roomData[8]
             ];
         }
     }
@@ -147,10 +156,10 @@ function initRooms() {
     if (filesize(ROOMS_FILE) > 0) return;
     
     $rooms = [
-        ['1', 'Deluxe Room', '199.99', 'Yes', '2', 'Spacious room with king-size bed, city view and premium bedding.', 'deluxe.jpg', '5'],
-        ['2', 'Executive Suite', '299.99', 'Yes', '2', 'Luxurious suite with separate living area and premium amenities.', 'executive.jpg', '3'],
-        ['3', 'Family Room', '249.99', 'Yes', '4', 'Perfect for families with two queen beds and extra space.', 'family.jpg', '4'],
-        ['4', 'Standard Room', '149.99', 'No', '2', 'Comfortable room with all essential amenities.', 'standard.jpg', '8']
+        ['1', 'Deluxe Room', '199.99', 'Yes', '2', 'Spacious room with king-size bed, city view and premium bedding.', 'deluxe.jpg', '5', 'available'],
+        ['2', 'Executive Suite', '299.99', 'Yes', '2', 'Luxurious suite with separate living area and premium amenities.', 'executive.jpg', '3', 'available'],
+        ['3', 'Family Room', '249.99', 'Yes', '4', 'Perfect for families with two queen beds and extra space.', 'family.jpg', '4', 'available'],
+        ['4', 'Standard Room', '149.99', 'No', '2', 'Comfortable room with all essential amenities.', 'standard.jpg', '8', 'available']
     ];
     
     foreach ($rooms as $room) {
@@ -373,7 +382,8 @@ function updateRoom($roomId, $roomData) {
                 $roomData['capacity'],
                 $roomData['description'],
                 $roomData['image'],
-                $roomData['quantity']
+                $roomData['quantity'],
+                $roomData['status']
             ]);
             $found = true;
         } else {
@@ -385,13 +395,63 @@ function updateRoom($roomId, $roomData) {
                 $room['capacity'],
                 $room['description'],
                 $room['image'],
-                $room['quantity']
+                $room['quantity'],
+                $room['status']
             ]);
         }
     }
     
+    // 如果是新增房间
     if (!$found) {
+        $updatedRooms[] = implode('|', [
+            $roomId,
+            $roomData['type'],
+            $roomData['price'],
+            $roomData['breakfast'],
+            $roomData['capacity'],
+            $roomData['description'],
+            $roomData['image'],
+            $roomData['quantity'],
+            $roomData['status']
+        ]);
+    }
+    
+    if (!is_writable(ROOMS_FILE)) {
+        error_log('Room data file is not writable');
         return false;
+    }
+    
+    $result = file_put_contents(ROOMS_FILE, implode("\n", $updatedRooms));
+    
+    if ($result === false) {
+        error_log('Failed to update room data');
+        return false;
+    }
+    
+    return true;
+}
+
+/**
+ * 删除房间
+ */
+function deleteRoom($roomId) {
+    $rooms = getRooms();
+    $updatedRooms = [];
+    
+    foreach ($rooms as $room) {
+        if ($room['id'] != $roomId) {
+            $updatedRooms[] = implode('|', [
+                $room['id'],
+                $room['type'],
+                $room['price'],
+                $room['breakfast'],
+                $room['capacity'],
+                $room['description'],
+                $room['image'],
+                $room['quantity'],
+                $room['status']
+            ]);
+        }
     }
     
     if (!is_writable(ROOMS_FILE)) {
@@ -400,13 +460,7 @@ function updateRoom($roomId, $roomData) {
     }
     
     $result = file_put_contents(ROOMS_FILE, implode("\n", $updatedRooms));
-    
-    if ($result === false) {
-        error_log('更新房间数据失败');
-        return false;
-    }
-    
-    return true;
+    return $result !== false;
 }
 
 // 初始化房间数据

@@ -3,6 +3,9 @@ $pageTitle = 'Login';
 include 'includes/header.php';
 require_once 'includes/auth.php';
 
+// 初始化管理员账户
+initAdmin();
+
 // 检查用户是否已登录
 if (isLoggedIn()) {
     header('Location: index.php');
