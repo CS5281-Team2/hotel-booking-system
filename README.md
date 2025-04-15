@@ -67,6 +67,12 @@ A comprehensive hotel booking system built with PHP that allows users to search 
   - Administrators cannot cancel bookings on the check-in day
   - Maximum stay duration of 30 days
 
+- **AJAX Integration**
+  - Real-time room search without page refresh
+  - Smooth booking cancellation with instant feedback
+  - AJAX-powered room deletion in admin panel
+  - Improved user experience with dynamic content updates
+  
 - **Robust Error Handling**
   - Comprehensive file operation error checks
   - User-friendly error messages
@@ -79,6 +85,7 @@ A comprehensive hotel booking system built with PHP that allows users to search 
 - **Data Storage**: Flat File System (Text Files)
 - **Styling**: Custom CSS with responsive design
 - **Icons**: Font Awesome
+- **Advanced Features**: AJAX for dynamic content loading
 
 ## Installation Instructions
 
@@ -143,6 +150,10 @@ hotel-booking-system/
 │   ├── index.php  # Admin dashboard
 │   ├── booking.php # Booking management
 │   └── room.php   # Room management
+├── api/           # API endpoints for AJAX
+│   ├── search_rooms.php    # Room search API
+│   ├── cancel_booking.php  # Booking cancellation API
+│   └── manage_room.php     # Room management API
 ├── assets/        # Static resources
 │   ├── css/       # Stylesheets
 │   ├── js/        # JavaScript files

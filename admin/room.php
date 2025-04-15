@@ -311,4 +311,98 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     </div>
 </section>
 
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // 为删除房间按钮添加AJAX处理
+    const deleteButtons = document.querySelectorAll('button[name="delete_room"]');
+    
+    deleteButtons.forEach(button => {
+        button.addEventListener('click', function(event) {
+            // 阻止表单提交默认行为
+            event.preventDefault();
+            
+            const roomId = this.closest('form').querySelector('input[name="room_id"]').value;
+            const roomRow = this.closest('tr');
+            
+            // 确认删除
+            if (!confirm('Are you sure you want to delete this room?')) {
+                return;
+            }
+            
+            // 准备表单数据
+            const formData = new FormData();
+            formData.append('action', 'delete');
+            formData.append('room_id', roomId);
+            
+            // 显示加载状态
+            this.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+            this.disabled = true;
+            
+            // 发送AJAX请求
+            fetch('../api/manage_room.php', {
+                method: 'POST',
+                body: formData,
+                signal: AbortSignal.timeout(10000) // 10秒超时
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Server responded with status: ' + response.status);
+                }
+                return response.text();
+            })
+            .then(text => {
+                // 尝试解析JSON
+                let data;
+                try {
+                    // 清理响应中可能存在的HTML警告信息
+                    let cleanedText = text.replace(/<br\s*\/?>\s*<b>Warning<\/b>.+?<br\s*\/?>/gi, '');
+                    data = JSON.parse(cleanedText);
+                } catch (e) {
+                    console.error("JSON parse error:", e, "Response text:", text);
+                    throw new Error('Invalid JSON response');
+                }
+                
+                if (data.success) {
+                    // 删除成功，从DOM中移除该行
+                    roomRow.remove();
+                    
+                    // 显示成功消息
+                    const container = document.querySelector('.container');
+                    const alertDiv = document.createElement('div');
+                    alertDiv.className = 'alert alert-success';
+                    alertDiv.textContent = data.message;
+                    
+                    // 将消息插入到页面顶部
+                    container.insertBefore(alertDiv, container.firstChild);
+                    
+                    // 3秒后淡出消息
+                    setTimeout(() => {
+                        alertDiv.style.transition = 'opacity 1s';
+                        alertDiv.style.opacity = '0';
+                        setTimeout(() => alertDiv.remove(), 1000);
+                    }, 3000);
+                } else {
+                    // 恢复按钮状态
+                    this.innerHTML = 'Delete';
+                    this.disabled = false;
+                    
+                    // 显示错误消息
+                    alert(data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                
+                // 恢复按钮状态
+                this.innerHTML = 'Delete';
+                this.disabled = false;
+                
+                // 显示错误消息
+                alert('An error occurred while deleting the room. Please try again later.');
+            });
+        });
+    });
+});
+</script>
+
 <?php include '../includes/footer.php'; ?>
