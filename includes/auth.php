@@ -4,7 +4,7 @@ require_once 'db.php';
 /**
  * 处理用户注册
  */
-function registerUser($name, $mobile, $email, $password) {
+function registerUser($name, $phone, $email, $password) {
     // 检查邮箱是否已被使用
     if (getUserByEmail($email)) {
         return [
@@ -13,16 +13,16 @@ function registerUser($name, $mobile, $email, $password) {
         ];
     }
     
-    // 创建用户数据
+    // 创建用户数据 - 使用关联数组而非索引数组
     $userId = generateId();
     $userData = [
-        $userId,
-        $name,
-        $email,
-        $mobile,
-        password_hash($password, PASSWORD_DEFAULT),
-        'user', // 角色
-        date('Y-m-d H:i:s') // 注册时间
+        'id' => $userId,
+        'name' => $name,
+        'email' => $email,
+        'phone' => $phone, // 统一使用 phone 字段
+        'password_hash' => password_hash($password, PASSWORD_DEFAULT),
+        'role' => 'user', // 角色
+        'created_at' => date('Y-m-d H:i:s') // 注册时间
     ];
     
     // 添加用户
@@ -114,7 +114,7 @@ function initAdmin() {
             'created_at' => date('Y-m-d H:i:s')
         ];
         
-        // addUser 现在处理关联数组并强制执行顺序
+        // addUser 处理关联数组
         addUser($adminData);
     }
 }
@@ -122,43 +122,48 @@ function initAdmin() {
 /**
  * 更新用户个人资料
  */
-function updateUserProfile($userId, $name, $mobile) {
-    $users = file(USERS_FILE, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES); // 直接读取文件行进行更新
+function updateUserProfile($userId, $name, $phone) {
+    // 获取所有用户（已经是关联数组格式）
+    $users = getUsers();
     $updatedUsers = [];
     $success = false;
-    $expectedFieldCount = 7;
-
-    foreach ($users as $line) {
-        $userData = explode('|', $line);
-        if (count($userData) === $expectedFieldCount) {
-             if ($userData[0] == $userId) {
-                 // 更新字段
-                 $userData[1] = $name;
-                 $userData[3] = $mobile;
-                 $updatedUsers[] = implode('|', $userData);
-                 $success = true;
-             } else {
-                 $updatedUsers[] = $line; // 保留未修改的行
-             }
-        } else {
-             $updatedUsers[] = $line; // 保留格式错误的行
-             error_log("Skipping update for malformed user line: " . $line);
+    
+    // 遍历用户并更新目标用户
+    foreach ($users as $user) {
+        if ($user['id'] == $userId) {
+            // 更新字段
+            $user['name'] = $name;
+            $user['phone'] = $phone;
+            $success = true;
         }
+        
+        // 准备要写入文件的格式（与 addUser 的 orderedData 保持一致）
+        $orderedData = [
+            $user['id'],
+            $user['name'],
+            $user['email'],
+            $user['phone'],
+            $user['password_hash'],
+            $user['role'],
+            $user['created_at']
+        ];
+        
+        $updatedUsers[] = implode('|', $orderedData);
     }
     
     if ($success) {
         // 使用文件锁安全地写入更新后的用户数据
         $fp = fopen(USERS_FILE, 'w');
         if (!$fp) {
-             error_log("Failed to open users file for profile update.");
-             return ['success' => false, 'message' => 'Failed to update profile (file error)'];
+            error_log("Failed to open users file for profile update.");
+            return ['success' => false, 'message' => 'Failed to update profile (file error)'];
         }
         if (flock($fp, LOCK_EX)) {
             fwrite($fp, implode("\n", $updatedUsers) . "\n");
             fflush($fp);
             flock($fp, LOCK_UN);
-             fclose($fp);
-             return ['success' => true, 'message' => 'Profile updated successfully'];
+            fclose($fp);
+            return ['success' => true, 'message' => 'Profile updated successfully'];
         } else {
             fclose($fp);
             error_log("Could not lock users file for profile update.");

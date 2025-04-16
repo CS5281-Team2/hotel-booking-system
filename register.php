@@ -10,7 +10,7 @@ if (isLoggedIn()) {
 }
 
 $name = '';
-$mobile = '';
+$phone = '';
 $email = '';
 $errorMessage = '';
 $successMessage = '';
@@ -18,7 +18,7 @@ $successMessage = '';
 // 处理注册表单提交
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $name = isset($_POST['name']) ? trim($_POST['name']) : '';
-    $mobile = isset($_POST['mobile']) ? trim($_POST['mobile']) : '';
+    $phone = isset($_POST['phone']) ? trim($_POST['phone']) : '';
     $email = isset($_POST['email']) ? trim($_POST['email']) : '';
     $password = isset($_POST['password']) ? $_POST['password'] : '';
     $confirmPassword = isset($_POST['confirm_password']) ? $_POST['confirm_password'] : '';
@@ -26,27 +26,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $nameRegex = '/^[a-zA-Z\s]+$/'; // 只允许字母和空格
     $phoneRegex = '/^1[3-9]\d{9}$|^[569]\d{7}$|^[6]\d{7}$/'; // 支持内地(11位)/香港(8位,5/6/9开头)/澳门(8位,6开头)
 
-    if (empty($name) || empty($email) || empty($mobile) || empty($password) || empty($confirmPassword)) {
+    if (empty($name) || empty($email) || empty($phone) || empty($password) || empty($confirmPassword)) {
         $errorMessage = 'All fields are required';
     } elseif (!preg_match($nameRegex, $name)) {
         $errorMessage = 'Name can only contain letters and spaces.';
     } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
         $errorMessage = 'Invalid email format';
-    } elseif (empty($mobile)) {
-        $errorMessage = 'Please enter your mobile number';
-    } elseif (!preg_match($phoneRegex, $mobile)) {
+    } elseif (empty($phone)) {
+        $errorMessage = 'Please enter your phone number';
+    } elseif (!preg_match($phoneRegex, $phone)) {
         $errorMessage = 'Please enter a valid 11-digit Mainland China, 8-digit Hong Kong, or 8-digit Macau phone number.';
+    } elseif (strlen($password) < 6) {
+        $errorMessage = 'Password must be at least 6 characters long';
     } elseif ($password !== $confirmPassword) {
         $errorMessage = 'Passwords do not match';
     } else {
         // 尝试注册
-        $result = registerUser($name, $mobile, $email, $password);
+        $result = registerUser($name, $phone, $email, $password);
         
         if ($result['success']) {
             $successMessage = 'Registration successful! You can now login.';
             // 重置表单数据
             $name = '';
-            $mobile = '';
+            $phone = '';
             $email = '';
         } else {
             $errorMessage = $result['message'];
@@ -83,8 +85,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             </div>
                             
                             <div class="form-group">
-                                <label for="mobile">Mobile Number</label>
-                                <input type="tel" id="mobile" name="mobile" class="form-control" value="<?php echo $mobile; ?>" required>
+                                <label for="phone">Phone Number</label>
+                                <input type="tel" id="phone" name="phone" class="form-control" value="<?php echo $phone; ?>" required>
                             </div>
                             
                             <div class="form-group">
@@ -117,51 +119,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     </div>
 </section>
 
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    const registerForm = document.getElementById('register-form');
-    const nameInput = document.getElementById('name');
-    const mobile = document.getElementById('mobile').value.trim();
-    const emailInput = document.getElementById('email');
-    const passwordInput = document.getElementById('password');
-    const confirmPasswordInput = document.getElementById('confirm_password');
-    const statusMessage = document.getElementById('status-message');
-    
-    registerForm.addEventListener('submit', function(event) {
-        event.preventDefault();
-        statusMessage.innerHTML = '';
-        
-        const name = nameInput.value.trim();
-        const email = emailInput.value.trim();
-        const mobile = mobile.value.trim();
-        const password = passwordInput.value.trim();
-        const confirmPassword = confirmPasswordInput.value.trim();
-        let errorMessage = '';
-        
-        const nameRegex = /^[a-zA-Z\s]+$/;
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        const phoneRegex = /^1[3-9]\d{9}$|^[569]\d{7}$|^[6]\d{7}$/; // 支持内地/香港/澳门
-        
-        if (name === '' || email === '' || mobile === '' || password === '' || confirmPassword === '') {
-            errorMessage = 'All fields are required';
-        } else if (!nameRegex.test(name)) {
-            errorMessage = 'Name can only contain letters and spaces.';
-        } else if (!emailRegex.test(email)) {
-            errorMessage = 'Invalid email format';
-        } else if (mobile === '') {
-            errorMessage = 'Please enter your mobile number';
-        } else if (!phoneRegex.test(mobile)) {
-            errorMessage = 'Please enter a valid 11-digit Mainland China, 8-digit Hong Kong, or 8-digit Macau phone number.';
-        } else if (password !== confirmPassword) {
-            errorMessage = 'Passwords do not match';
-        }
-        
-        if (errorMessage) {
-            event.preventDefault();
-            statusMessage.innerHTML = errorMessage;
-        }
-    });
-});
-</script>
+<!-- 引入外部JS文件 -->
+<script src="assets/js/validation.js"></script>
+<script src="register.js"></script>
 
 <?php include 'includes/footer.php'; ?>

@@ -5,9 +5,9 @@ require_once 'includes/db.php';
 require_once 'includes/auth.php';
 
 // 验证用户登录状态
-if (!isLoggedIn()) {
+if (!isset($_SESSION['user_id']) || empty($_SESSION['user_id'])) {
     // 保存当前URL，登录后重定向回来
-    $_SESSION['redirect_back'] = $_SERVER['REQUEST_URI'];
+    $_SESSION['redirect_after_login'] = $_SERVER['REQUEST_URI'];
     header('Location: login.php');
     exit;
 }
@@ -47,14 +47,14 @@ $successMessage = '';
 $errorMessage = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $mobilePhone = isset($_POST['mobile_phone']) ? trim($_POST['mobile_phone']) : '';
+    $phone = isset($_POST['phone']) ? trim($_POST['phone']) : '';
     $specialRequests = isset($_POST['special_requests']) ? trim($_POST['special_requests']) : '';
     
     // 验证电话号码 (仅结构，不含区号)
     $phoneRegex = '/^1[3-9]\d{9}$|^[569]\d{7}$|^[6]\d{7}$/'; // 支持内地(11位)/香港(8位,5/6/9开头)/澳门(8位,6开头)
-    if (empty($mobilePhone)) {
+    if (empty($phone)) {
         $errorMessage = 'Please provide a contact phone number.';
-    } elseif (!preg_match($phoneRegex, $mobilePhone)) {
+    } elseif (!preg_match($phoneRegex, $phone)) {
         $errorMessage = 'Please enter a valid 11-digit Mainland China, 8-digit Hong Kong, or 8-digit Macau phone number.';
     } else {
         // 创建预订
@@ -66,7 +66,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'check_out' => $checkOut,
             'guests' => $guests,
             'total_price' => $totalPrice,
-            'mobile_phone' => $mobilePhone,
+            'mobile_phone' => $phone, // 注意：预订系统中使用 mobile_phone 字段，区别于用户个人资料中的 phone 字段
             'special_requests' => $specialRequests,
             'status' => 'confirmed',
             'created_at' => date('Y-m-d H:i:s')
@@ -101,8 +101,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         
                         <form method="POST" action="" id="booking-form">
                             <div class="form-group">
-                                <label for="mobile_phone">Contact Phone</label>
-                                <input type="tel" id="mobile_phone" name="mobile_phone" class="form-control" required>
+                                <label for="phone">Contact Phone</label>
+                                <input type="tel" id="phone" name="phone" class="form-control" required>
                                 <small>This will be used for urgent matters related to your reservation.</small>
                             </div>
                             
@@ -177,19 +177,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     </div>
 </section>
 
+<script src="assets/js/validation.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const bookingForm = document.getElementById('booking-form');
     
     bookingForm.addEventListener('submit', function(event) {
-        const mobilePhone = document.getElementById('mobile_phone').value.trim();
+        const phone = document.getElementById('phone').value.trim();
         
-        if (!mobilePhone) {
+        if (!phone) {
             event.preventDefault();
             alert('Please provide a contact phone number.');
+        } else if (!ValidationRules.validatePhone(phone)) {
+            event.preventDefault();
+            alert(ValidationRules.getPhoneErrorMessage());
         }
     });
 });
 </script>
 
-<?php include 'includes/footer.php'; ?> 
+<?php include 'includes/footer.php'; ?>

@@ -5,7 +5,9 @@ require_once 'includes/db.php';
 require_once 'includes/auth.php';
 
 // 验证用户登录状态
-if (!isLoggedIn()) {
+if (!isset($_SESSION['user_id']) || empty($_SESSION['user_id'])) {
+    // 设置重定向地址
+    $_SESSION['redirect_after_login'] = 'profile.php';
     header('Location: login.php');
     exit;
 }
@@ -14,14 +16,20 @@ if (!isLoggedIn()) {
 $userId = $_SESSION['user_id'];
 $user = getUserById($userId);
 
+// 检查用户是否存在
 if (!$user) {
-    header('Location: logout.php'); // 如果找不到用户，注销并重定向
+    // 记录错误
+    error_log("Error: User not found for ID: $userId in profile.php");
+    // 引导用户重新登录
+    session_unset();
+    session_destroy();
+    header('Location: login.php?error=user_not_found');
     exit;
 }
 
 $name = $user['name'];
 $email = $user['email'];
-$mobile = $user['phone'];
+$phone = $user['phone'];
 $membershipNumber = 'LH' . str_pad(rand(1000, 9999), 6, '0', STR_PAD_LEFT);
 
 // 处理表单提交
@@ -30,7 +38,7 @@ $updateError = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile'])) {
     $newName = isset($_POST['name']) ? trim($_POST['name']) : '';
-    $newMobile = isset($_POST['mobile']) ? trim($_POST['mobile']) : '';
+    $newPhone = isset($_POST['phone']) ? trim($_POST['phone']) : '';
     
     $nameRegex = '/^[a-zA-Z\s]+$/'; // 只允许字母和空格
     $phoneRegex = '/^1[3-9]\d{9}$|^[569]\d{7}$|^[6]\d{7}$/'; // 支持内地(11位)/香港(8位,5/6/9开头)/澳门(8位,6开头)
@@ -39,17 +47,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile'])) {
         $updateError = 'Please enter your name';
     } elseif (!preg_match($nameRegex, $newName)) {
         $updateError = 'Name can only contain letters and spaces.';
-    } elseif (empty($newMobile)) {
-        $updateError = 'Please enter your mobile number';
-    } elseif (!preg_match($phoneRegex, $newMobile)) {
+    } elseif (empty($newPhone)) {
+        $updateError = 'Please enter your phone number';
+    } elseif (!preg_match($phoneRegex, $newPhone)) {
         $updateError = 'Please enter a valid 11-digit Mainland China, 8-digit Hong Kong, or 8-digit Macau phone number.';
     } else {
         // 更新用户信息
-        $result = updateUserProfile($userId, $newName, $newMobile);
+        $result = updateUserProfile($userId, $newName, $newPhone);
         
         if ($result['success']) {
             $name = $newName;
-            $mobile = $newMobile;
+            $phone = $newPhone;
             $updateSuccess = true;
             
             // 更新SESSION中的用户名
@@ -102,7 +110,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile'])) {
                                 </p>
                                 <p style="margin-bottom: 15px;">
                                     <i class="fas fa-phone" style="width: 20px; color: var(--primary-color); margin-right: 10px;"></i>
-                                    <strong>Mobile:</strong> <span id="display-mobile"><?php echo $mobile; ?></span>
+                                    <strong>Phone:</strong> <span id="display-phone"><?php echo $phone; ?></span>
                                 </p>
                             </div>
                             
@@ -138,8 +146,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile'])) {
                             </div>
                             
                             <div style="margin-bottom: 30px;">
-                                <label for="mobile" style="display: block; margin-bottom: 5px; font-weight: bold;">Mobile Number</label>
-                                <input type="text" id="mobile" name="mobile" class="form-control" value="<?php echo $mobile; ?>" placeholder="China: 13812345678 / Hong Kong: 51234567" required>
+                                <label for="phone" style="display: block; margin-bottom: 5px; font-weight: bold;">Phone Number</label>
+                                <input type="text" id="phone" name="phone" class="form-control" value="<?php echo $phone; ?>" placeholder="China: 13812345678 / Hong Kong: 51234567" required>
                                 <small style="color: #666; display: block; margin-top: 5px;">Supported formats: China mainland (11 digits starting with 1) or Hong Kong (8 digits starting with 5-9)</small>
                             </div>
                             
@@ -187,6 +195,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile'])) {
     </div>
 </section>
 
+<script src="assets/js/validation.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const viewMode = document.getElementById('view-mode');
@@ -195,31 +204,11 @@ document.addEventListener('DOMContentLoaded', function() {
     const cancelButton = document.getElementById('cancel-button');
     const profileForm = document.getElementById('profile-form');
     const nameInput = document.getElementById('name');
-    const mobileInput = document.getElementById('mobile');
+    const phoneInput = document.getElementById('phone');
     const statusMessage = document.getElementById('update-status-message');
     const displayName = document.getElementById('display-name');
-    const displayMobile = document.getElementById('display-mobile');
+    const displayPhone = document.getElementById('display-phone');
     let errorMessage = '';
-    
-    const nameRegex = /^[a-zA-Z\s]+$/;
-    const phoneRegex = /^1[3-9]\d{9}$|^[569]\d{7}$|^[6]\d{7}$/; // 支持内地/香港/澳门
-
-    if (nameInput.value.trim() === '') {
-        errorMessage = 'Please enter your name';
-    }
-    else if (!nameRegex.test(nameInput.value.trim())) {
-        errorMessage = 'Name can only contain letters and spaces.';
-    }
-    else if (mobileInput.value.trim() === '') {
-        errorMessage = 'Please enter your mobile number';
-    }
-    else if (!phoneRegex.test(mobileInput.value.trim())) {
-        errorMessage = 'Please enter a valid 11-digit Mainland China, 8-digit Hong Kong, or 8-digit Macau phone number.';
-    }
-
-    if (errorMessage) {
-        statusMessage.innerHTML = `<div class="alert alert-error">${errorMessage}</div>`;
-    }
     
     // 切换到编辑模式
     editButton.addEventListener('click', function() {
@@ -243,15 +232,18 @@ document.addEventListener('DOMContentLoaded', function() {
             if (nameInput.value.trim() === '') {
                 errorMessage = 'Please enter your name';
                 hasError = true;
-            }
-            // 验证手机号
-            else if (mobileInput.value.trim() === '') {
-                errorMessage = 'Please enter your mobile number';
+            } else if (!ValidationRules.validateName(nameInput.value)) {
+                errorMessage = 'Name can only contain letters and spaces.';
                 hasError = true;
             }
-            // 验证手机号格式 - 中国大陆或香港
-            else if (!(/^1[3-9]\d{9}$/.test(mobileInput.value.trim()) || /^[5-9]\d{7}$/.test(mobileInput.value.trim()))) {
-                errorMessage = 'Please enter a valid phone number (China mainland: 11 digits starting with 1, Hong Kong: 8 digits starting with 5-9)';
+            // 验证手机号
+            else if (phoneInput.value.trim() === '') {
+                errorMessage = 'Please enter your phone number';
+                hasError = true;
+            }
+            // 验证手机号格式
+            else if (!ValidationRules.validatePhone(phoneInput.value)) {
+                errorMessage = ValidationRules.getPhoneErrorMessage();
                 hasError = true;
             }
             

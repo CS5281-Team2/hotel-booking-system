@@ -5,13 +5,26 @@ require_once 'includes/db.php';
 require_once 'includes/auth.php';
 
 // 验证用户登录状态
-if (!isLoggedIn()) {
+if (!isset($_SESSION['user_id']) || empty($_SESSION['user_id'])) {
+    // 设置重定向地址
+    $_SESSION['redirect_after_login'] = 'my-trips.php';
     header('Location: login.php');
     exit;
 }
 
 // 获取用户预订
 $userId = $_SESSION['user_id'];
+// 增加安全检查
+if (empty($userId)) {
+    // 记录错误
+    error_log("Error: Empty user ID in my-trips.php");
+    // 引导用户重新登录
+    session_unset();
+    session_destroy();
+    header('Location: login.php?error=session_expired');
+    exit;
+}
+
 $bookings = getUserBookings($userId);
 
 // 将预订分类为即将到来的和历史预订

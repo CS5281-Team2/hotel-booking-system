@@ -8,28 +8,34 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // 获取表单字段值
             const name = document.getElementById('name').value.trim();
-            const mobile = document.getElementById('mobile').value.trim();
+            const phone = document.getElementById('phone').value.trim();
             const email = document.getElementById('email').value.trim();
             const password = document.getElementById('password').value;
             const confirmPassword = document.getElementById('confirm_password').value;
+            
+            // 验证正则表达式
+            const nameRegex = /^[a-zA-Z\s]+$/; // 只允许字母和空格
+            const phoneRegex = /^1[3-9]\d{9}$|^[569]\d{7}$|^[6]\d{7}$/; // 支持内地(11位)/香港(8位,5/9开头)/澳门(8位,6开头)
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
             
             // 验证姓名
             if (name === '') {
                 errorMessage = 'Please enter your name';
                 hasError = true;
-            }
-            // 验证手机号
-            else if (mobile === '') {
-                errorMessage = 'Please enter your mobile phone number';
+            } else if (!nameRegex.test(name)) {
+                errorMessage = 'Name can only contain letters and spaces';
                 hasError = true;
             }
-            // 验证手机号格式 - 中国大陆或香港
-            else if (!(/^1[3-9]\d{9}$/.test(mobile) || /^[5-9]\d{7}$/.test(mobile))) {
-                errorMessage = 'Please enter a valid phone number (China mainland: 11 digits starting with 1, Hong Kong: 8 digits starting with 5-9)';
+            // 验证手机号
+            else if (phone === '') {
+                errorMessage = 'Please enter your phone number';
+                hasError = true;
+            } else if (!phoneRegex.test(phone)) {
+                errorMessage = 'Please enter a valid 11-digit Mainland China, 8-digit Hong Kong, or 8-digit Macau phone number';
                 hasError = true;
             }
             // 验证邮箱
-            else if (email === '' || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+            else if (email === '' || !emailRegex.test(email)) {
                 errorMessage = 'Please enter a valid email address';
                 hasError = true;
             }
@@ -51,18 +57,12 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
         
-        // 手机号格式化
-        const mobileInput = document.getElementById('mobile');
-        if (mobileInput) {
-            mobileInput.addEventListener('input', function(e) {
+        // 手机号格式化 - 仅允许数字输入，不再限制位数
+        const phoneInput = document.getElementById('phone');
+        if (phoneInput) {
+            phoneInput.addEventListener('input', function(e) {
                 // 移除所有非数字字符
                 let value = this.value.replace(/\D/g, '');
-                
-                // 限制长度为10位
-                if (value.length > 10) {
-                    value = value.slice(0, 10);
-                }
-                
                 this.value = value;
             });
         }
