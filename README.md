@@ -180,6 +180,48 @@ hotel-booking-system/
 └── my-trips.php   # User bookings
 ```
 
+## Data Storage Specifications
+
+### File Structure and Format
+All data is stored in plain text files within the `data/` directory using a structured format:
+
+#### users.txt
+- One user per line
+- Fields separated by '|' character
+- Format: `id|name|email|mobile|password_hash|role|created_at`
+- Example: `1|John Doe|john@example.com|13800138000|$2y$10$hash...|user|2024-03-15 10:00:00`
+
+#### rooms.txt
+- One room per line
+- Fields separated by '|' character
+- Format: `id|type|name|description|price|quantity|status|image_path`
+- Example: `1|deluxe|Deluxe Ocean View|Spacious room with ocean view|299.99|5|available|assets/images/rooms/deluxe-ocean.jpg`
+
+#### bookings.txt
+- One booking per line
+- Fields separated by '|' character
+- Format: `id|user_id|room_id|check_in|check_out|guests|status|special_requests|created_at`
+- Example: `1|1|1|2024-04-01|2024-04-03|2|confirmed|None|2024-03-15 10:30:00`
+
+### Data Operations
+- All file operations use flock() for concurrency control
+- Atomic write operations using temporary files
+- Regular backups recommended (every 24 hours)
+- File permissions: 644 for data files, 755 for data directory
+
+### Data Validation
+- All input data is sanitized before storage
+- Date formats: YYYY-MM-DD
+- Time formats: YYYY-MM-DD HH:MM:SS
+- Mobile numbers validated against regional patterns
+- Email addresses validated using filter_var()
+
+### Error Handling
+- File operation errors logged to error.log
+- Automatic file creation if not exists
+- Backup creation before critical operations
+- Data integrity checks on read/write operations
+
 ## User Workflow
 
 1. **Registration Process**
