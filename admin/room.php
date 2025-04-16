@@ -124,14 +124,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'status' => $roomStatus
                 ];
                 
-                if (updateRoom($roomId, $roomData)) {
-                    $successMessage = 'Room information saved successfully';
+                // 区分新增和更新操作
+                $isNewRoom = !getRoomById($roomId);
+                $success = $isNewRoom ? addRoom($roomData) : updateRoom($roomId, $roomData);
+                
+                if ($success) {
+                    $successMessage = ($isNewRoom ? 'Room added' : 'Room information updated') . ' successfully';
                     $rooms = getRooms();
                     // 重定向到当前页面以刷新数据
                     header('Location: room.php?success=' . urlencode($successMessage));
                     exit;
                 } else {
-                    $errorMessage = 'Failed to save room information';
+                    $errorMessage = 'Failed to ' . ($isNewRoom ? 'add' : 'update') . ' room information';
                 }
             }
         }
