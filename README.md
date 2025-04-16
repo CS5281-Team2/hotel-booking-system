@@ -183,25 +183,25 @@ hotel-booking-system/
 ## Data Storage Specifications
 
 ### File Structure and Format
-All data is stored in plain text files within the `data/` directory using a structured format:
+All data is stored in text files within the `data/` directory using a structured format:
 
 #### users.txt
-- One user per line
+- One user record per line
 - Fields separated by '|' character
 - Format: `id|name|email|mobile|password_hash|role|created_at`
-- Example: `1|John Doe|john@example.com|13800138000|$2y$10$hash...|user|2024-03-15 10:00:00`
+- Example: `2|John Doe|john@example.com|13912345678|$2y$10$hash...|user|2025-04-10 09:15:20`
 
 #### rooms.txt
-- One room per line
+- One room record per line
 - Fields separated by '|' character
-- Format: `id|type|name|description|price|quantity|status|image_path`
-- Example: `1|deluxe|Deluxe Ocean View|Spacious room with ocean view|299.99|5|available|assets/images/rooms/deluxe-ocean.jpg`
+- Format: `id|name|price|has_wifi|capacity|description|image_name|quantity|status`
+- Example: `1|Deluxe Room|199.99|Yes|5|Spacious room with king-size bed|deluxe.jpg|5|available`
 
 #### bookings.txt
-- One booking per line
+- One booking record per line
 - Fields separated by '|' character
-- Format: `id|user_id|room_id|check_in|check_out|guests|status|special_requests|created_at`
-- Example: `1|1|1|2024-04-01|2024-04-03|2|confirmed|None|2024-03-15 10:30:00`
+- Format: `booking_id|user_id|room_id|check_in|check_out|guests|total_price|status|created_at|contact_mobile|special_requests`
+- Example: `67fe8dbf65fd4|2|1|2025-04-10|2025-04-13|2|599.97|completed|2025-03-15 10:30:45|13912345678|Extra bed needed`
 
 ### Data Operations
 - All file operations use flock() for concurrency control
@@ -210,10 +210,13 @@ All data is stored in plain text files within the `data/` directory using a stru
 - File permissions: 644 for data files, 755 for data directory
 
 ### Data Validation
-- All input data is sanitized before storage
-- Date formats: YYYY-MM-DD
-- Time formats: YYYY-MM-DD HH:MM:SS
-- Mobile numbers validated against regional patterns
+- All input data is sanitized and validated before storage
+- Date format: YYYY-MM-DD
+- Time format: YYYY-MM-DD HH:MM:SS
+- Mobile number validation by region:
+  - Mainland China: 11 digits, starting with 1
+  - Hong Kong: 8 digits, starting with 5, 6, or 9
+  - Macau: 8 digits, starting with 6
 - Email addresses validated using filter_var()
 
 ### Error Handling
